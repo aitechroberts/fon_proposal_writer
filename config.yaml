@@ -1,0 +1,8 @@
+prompt_variants:
+  aggressive:
+    temperature: 0.1
+    extract_hidden_requirements: true
+  conservative:
+    temperature: 0.0
+    strict_keyword_matching: true
+default_variant: conservative

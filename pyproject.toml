@@ -1,0 +1,22 @@
+[project]
+name = "fon-proposal-writer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+	"dspy>=3,<4",
+	"openai>=1.99,<2",
+	"langfuse==3.3.2",
+	"openinference-instrumentation-dspy>=0.1.26",
+	"pydantic==2.11.7",
+	"pydantic-settings>=2.6,<3",
+	"pypdf==6.0.0",
+	"azure-storage-blob>=12,<13",
+	"azure-ai-documentintelligence>=1.0.0",
+	"pandas>=2.2",
+	"XlsxWriter>=3.2",
+	"PyYAML>=6.0",
+	"regex>=2024.11.6",
+	"tqdm"
+]

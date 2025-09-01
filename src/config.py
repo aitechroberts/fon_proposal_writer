@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     azure_api_key: str = Field(default="", alias="AZURE_API_KEY")
     azure_api_base: str = Field(default="", alias="AZURE_API_BASE")
     azure_api_version: str = Field(default="2025-05-01-preview", alias="AZURE_API_VERSION")
-    azure_openai_deployment: str = Field(default="gpt-4o-mini", alias="AZURE_OPENAI_DEPLOYMENT")
+    azure_openai_deployment: str = Field(default="gpt-4.1", alias="AZURE_OPENAI_DEPLOYMENT")
     
     # Langfuse Configuration
     langfuse_public_key: str = Field(default="", alias="LANGFUSE_PUBLIC_KEY")

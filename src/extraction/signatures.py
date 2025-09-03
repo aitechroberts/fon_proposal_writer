@@ -3,7 +3,8 @@ import dspy
 from dspy import InputField, OutputField
 
 class ExtractReqs(dspy.Signature):
-    """Given RFP chunk text (1-8 pages), return a JSON array of requirement objects.
+    """Given RFP chunk text, return a JSON array of requirement objects meaning any contract-like requirements
+    or requests identified in the government proposal documents that a contractor responding to the RFP must address.
     Each object: {id,label,category,modality,quote,section,page_start,page_end,confidence}
     Categories ∈ {Technical, AdminFormat, Submission, Eligibility, Other}.
     Modality ∈ {SHALL,MUST,SHOULD,MAY,WILL,REQUIRED,PROHIBITED}.

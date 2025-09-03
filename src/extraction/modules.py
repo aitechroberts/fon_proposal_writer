@@ -3,7 +3,6 @@ import json
 import logging
 from typing import Dict, List, Any
 import dspy
-from langfuse import observe
 from .signatures import ExtractReqs, ClassifyReq, GroundReq
 
 logger = logging.getLogger(__name__)
@@ -15,7 +14,6 @@ class Extractor(dspy.Module):
         super().__init__()
         self.pred = dspy.Predict(ExtractReqs)
 
-    @observe
     def forward(self, chunk: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract requirements from a text chunk."""
         try:

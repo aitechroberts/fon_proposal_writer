@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     # Azure OpenAI Configuration
     azure_api_key: str = Field(default="", alias="AZURE_API_KEY")
     azure_api_base: str = Field(default="", alias="AZURE_API_BASE")
-    azure_api_version: str = Field(default="2025-05-01-preview", alias="AZURE_API_VERSION")
+    azure_api_version: str = Field(default="2024-12-01-preview", alias="AZURE_API_VERSION")
     azure_openai_deployment: str = Field(default="gpt-4.1", alias="AZURE_OPENAI_DEPLOYMENT")
     
     # Langfuse Configuration
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     
     # Azure Storage Configuration
     azure_storage_connection_string: str = Field(default="", alias="AZURE_STORAGE_CONNECTION_STRING")
-    azure_blob_container: str = Field(default="rfp-poc", alias="AZURE_BLOB_CONTAINER")
+    azure_blob_container: str = Field(default="proposal-container", alias="AZURE_BLOB_CONTAINER")
     
     # Optional Azure Document Intelligence
     documentintelligence_endpoint: str | None = Field(default=None, alias="DOCUMENTINTELLIGENCE_ENDPOINT")

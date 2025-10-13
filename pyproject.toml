@@ -19,5 +19,6 @@ dependencies = [
 	"XlsxWriter>=3.2",
 	"PyYAML>=6.0",
 	"regex>=2024.11.6",
-	"tqdm"
+	"tqdm",
+	"rapidfuzz>=3.14.0",
 ]

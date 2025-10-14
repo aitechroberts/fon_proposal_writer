@@ -1,0 +1,54 @@
+[
+  {
+    "id": "1",
+    "label": "Comply with Federal reporting and information system continuous monitoring requirements",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "Contractors operating information systems on behalf of the Government shall comply with Federal reporting and information system continuous monitoring requirements.",
+    "section": "Federal Reporting and Continuous Monitoring Requirements",
+    "page_start": 53,
+    "page_end": 53,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 52
+  },
+  {
+    "id": "2",
+    "label": "Provide all information to fully satisfy Federal reporting requirements for information systems",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "The Contractor shall provide the Government with all information to fully satisfy Federal reporting requirements for information systems.",
+    "section": "Federal Reporting and Continuous Monitoring Requirements",
+    "page_start": 53,
+    "page_end": 53,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 52
+  },
+  {
+    "id": "3",
+    "label": "Provide requested information to the COR within 3 business days of receipt of the request",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "The Contractor shall provide the COR with requested information within 3 business days of receipt of the request.",
+    "section": "Federal Reporting and Continuous Monitoring Requirements",
+    "page_start": 53,
+    "page_end": 53,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 52
+  },
+  {
+    "id": "4",
+    "label": "Store monthly continuous monitoring data at Contractor's location for at least 1 year from creation date unless otherwise specified",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "Unless otherwise specified in the contract, monthly continuous monitoring data shall be stored at the Contractor's location for a period not less than 1 year from the date the data are created.",
+    "section": "Federal Reporting and Continuous Monitoring Requirements",
+    "page_start": 53,
+    "page_end": 53,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 52
+  }
+]

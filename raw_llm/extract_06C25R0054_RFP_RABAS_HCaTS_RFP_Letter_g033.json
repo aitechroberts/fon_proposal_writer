@@ -1,0 +1,28 @@
+[
+  {
+    "id": "1",
+    "label": "Include telework clause in subcontracts",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "The Contractor shall include the substance of this clause in all subcontracts where telework is permitted.",
+    "section": "D. Subcontracts",
+    "page_start": 33,
+    "page_end": 33,
+    "confidence": 0.98,
+    "source": "llm",
+    "_gidx": 32
+  },
+  {
+    "id": "2",
+    "label": "Monitor subcontractor adherence to telework clause",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "The Contractor shall be responsible for monitoring the subcontractor’s adherence to this clause.",
+    "section": "D. Subcontracts",
+    "page_start": 33,
+    "page_end": 33,
+    "confidence": 0.98,
+    "source": "llm",
+    "_gidx": 32
+  }
+]

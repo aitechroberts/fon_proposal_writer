@@ -15,3 +15,5 @@ requirements_formatted.xlsx
 requirements_simple.xlsx
 data/
 DHS_CBP_Requirements.xlsx
+tmp_outputs/
+outputs/

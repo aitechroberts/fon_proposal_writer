@@ -1,0 +1,72 @@
+[
+  {
+    "id": "3",
+    "label": "Government information use limited to contract purposes",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "Any information made available to the Contractor by the Government shall be used only for the purpose of carrying out the provisions of this contract and shall not be divulged or made known in any manner to any persons except as may be necessary in the performance of the contract.",
+    "section": "D.4 DISCLOSURE OF INFORMATION (MAR 2003) - A. General",
+    "page_start": 26,
+    "page_end": 26,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 25,
+    "_idx": 0
+  },
+  {
+    "id": "4",
+    "label": "Restriction on use/disclosure of proprietary technical data",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "The Contractor shall not use, disclose, reproduce, or otherwise divulge or transfuse to any persons any technical information or data licensed for use by the Government that bears any type of restrictive or proprietary legend except as may be necessary in the performance of the contract.",
+    "section": "D.4 DISCLOSURE OF INFORMATION (MAR 2003) - B. Technical Data Rights",
+    "page_start": 26,
+    "page_end": 26,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 25,
+    "_idx": 1
+  },
+  {
+    "id": "5",
+    "label": "Protection of confidentiality of Government records and data",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "In performance of this contract the Contractor assumes the responsibility for protection of the confidentiality of all Government records and/or protected data provided for performance under the contract and shall ensure that (a) all work performed by any subcontractor is subject to the disclosure restrictions set forth above and (b) all subcontract work be performed under the supervision of the Contractor or their employees.",
+    "section": "D.4 DISCLOSURE OF INFORMATION (MAR 2003) - C. Privacy Act",
+    "page_start": 26,
+    "page_end": 26,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 25,
+    "_idx": 2
+  },
+  {
+    "id": "4",
+    "label": "Restriction on use/disclosure of proprietary technical data",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "The Contractor shall not use, disclose, reproduce, or otherwise divulge or transfuse to any persons any technical information or data licensed for use by the Government that bears any type of restrictive or proprietary legend except as may be necessary in the performance of the contract.",
+    "section": "D.4 DISCLOSURE OF INFORMATION (MAR 2003) - B. Technical Data Rights",
+    "page_start": 26,
+    "page_end": 26,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 25,
+    "_idx": 3
+  },
+  {
+    "id": "5",
+    "label": "Protection of confidentiality of Government records and data",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "In performance of this contract the Contractor assumes the responsibility for protection of the confidentiality of all Government records and/or protected data provided for performance under the contract and shall ensure that (a) all work performed by any subcontractor is subject to the disclosure restrictions set forth above and (b) all subcontract work be performed under the supervision of the Contractor or their employees.",
+    "section": "D.4 DISCLOSURE OF INFORMATION (MAR 2003) - C. Privacy Act",
+    "page_start": 26,
+    "page_end": 26,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 25,
+    "_idx": 4
+  }
+]

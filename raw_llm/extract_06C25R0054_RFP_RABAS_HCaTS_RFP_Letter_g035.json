@@ -1,0 +1,93 @@
+[
+  {
+    "id": "E.16-1",
+    "label": "Contractor must continue performance of services if the Government exercises the option to extend services.",
+    "category": "Technical",
+    "modality": "MUST",
+    "quote": "The Government may require continued performance of any services within the limits and at the rates specified in the contract.",
+    "section": "E.16",
+    "page_start": 35,
+    "page_end": 35,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 34
+  },
+  {
+    "id": "E.16-2",
+    "label": "Contractor must accept rate adjustments only as a result of revisions to prevailing labor rates provided by the Secretary of Labor.",
+    "category": "Technical",
+    "modality": "MUST",
+    "quote": "These rates may be adjusted only as a result of revisions to prevailing labor rates provided by the Secretary of Labor.",
+    "section": "E.16",
+    "page_start": 35,
+    "page_end": 35,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 34
+  },
+  {
+    "id": "E.16-3",
+    "label": "Contractor must accept that the total extension of performance shall not exceed 6 months.",
+    "category": "Technical",
+    "modality": "MUST",
+    "quote": "The option provision may be exercised more than once, but the total extension of performance hereunder shall not exceed 6 months.",
+    "section": "E.16",
+    "page_start": 35,
+    "page_end": 35,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 34
+  },
+  {
+    "id": "E.16-4",
+    "label": "Contractor must accept option exercise by written notice from the Contracting Officer within 7 days.",
+    "category": "AdminFormat",
+    "modality": "MUST",
+    "quote": "The Contracting Officer may exercise the option by written notice to the Contractor within 7 days.",
+    "section": "E.16",
+    "page_start": 35,
+    "page_end": 35,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 34
+  },
+  {
+    "id": "E.17-1",
+    "label": "Contractor must accept contract extension by written notice within 5 days, provided preliminary notice is given at least 10 days before contract expiration.",
+    "category": "AdminFormat",
+    "modality": "MUST",
+    "quote": "The Government may extend the term of this contract by written notice to the Contractor within 5 days; provided that the Government gives the Contractor a preliminary written notice of its intent to extend at least 10 days before the contract expires.",
+    "section": "E.17",
+    "page_start": 35,
+    "page_end": 35,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 34
+  },
+  {
+    "id": "E.17-2",
+    "label": "Contractor must accept that the extended contract shall include the option clause.",
+    "category": "AdminFormat",
+    "modality": "MUST",
+    "quote": "If the Government exercises this option, the extended contract shall be considered to include this option clause.",
+    "section": "E.17",
+    "page_start": 35,
+    "page_end": 35,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 34
+  },
+  {
+    "id": "E.17-3",
+    "label": "Contractor must accept that the total duration of the contract, including options, shall not exceed 60 months.",
+    "category": "AdminFormat",
+    "modality": "MUST",
+    "quote": "The total duration of this contract, including the exercise of any options under this clause, shall not exceed 60 months.",
+    "section": "E.17",
+    "page_start": 35,
+    "page_end": 35,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 34
+  }
+]

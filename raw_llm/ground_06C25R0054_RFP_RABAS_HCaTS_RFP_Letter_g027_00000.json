@@ -1,0 +1,58 @@
+[
+  {
+    "id": "req-001",
+    "label": "Compliance with CBP rules and regulations for personnel",
+    "category": "Compliance & Regulatory",
+    "modality": "MUST",
+    "quote": "Rules, regulations directives and requirements which are issued by U.S. Customs & Border Protection under their responsibility for good order, administration and security are applicable to all personnel who enter U.S. Customs & Border Protection installations or who travel on Government transportation.",
+    "section": "5. Rules, regulations directives and requirements",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27,
+    "_idx": 0
+  },
+  {
+    "id": "req-002",
+    "label": "No on-site performance on Federal holidays except as defined",
+    "category": "Schedule & Milestones",
+    "modality": "PROHIBITED",
+    "quote": "Except for designated around-the-clock or emergency operations, and/or as defined within the statement of requirements, contractor personnel will not be able to perform on site under this contract with CBP on the holidays set forth above.",
+    "section": "D.6 HOLIDAYS AND ADMINISTRATIVE LEAVE (OCT 2021)",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27,
+    "_idx": 1
+  },
+  {
+    "id": "req-003",
+    "label": "No holiday charges as direct contract charge",
+    "category": "Pricing & Payment",
+    "modality": "PROHIBITED",
+    "quote": "The contractor will not charge any holiday as a direct charge to the contract.",
+    "section": "D.6 HOLIDAYS AND ADMINISTRATIVE LEAVE (OCT 2021)",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27,
+    "_idx": 2
+  },
+  {
+    "id": "req-004",
+    "label": "No extension or price adjustment for holiday observance except as set forth",
+    "category": "Schedule & Milestones",
+    "modality": "PROHIBITED",
+    "quote": "Observance of such days by Government personnel shall not be cause for an extension to the delivery schedule or period of performance or adjustment to the price, except as set forth in the contract.",
+    "section": "D.6 HOLIDAYS AND ADMINISTRATIVE LEAVE (OCT 2021)",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27,
+    "_idx": 3
+  }
+]

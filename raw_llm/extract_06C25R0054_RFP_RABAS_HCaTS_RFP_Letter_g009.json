@@ -1,0 +1,93 @@
+[
+  {
+    "id": "1",
+    "label": "Submit Power Point Slides for Oral Presentation",
+    "category": "Submission",
+    "modality": "SHALL",
+    "quote": "The Quoter shall submit the Power Point Slides for the Oral Presentation to the Contract Specialist with the proposal.",
+    "section": "Oral Presentation Requirements",
+    "page_start": 9,
+    "page_end": 9,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 8
+  },
+  {
+    "id": "2",
+    "label": "Submit pricing information using provided Pricing Schedule",
+    "category": "Submission",
+    "modality": "SHALL",
+    "quote": "The pricing information shall be submitted using the Pricing Schedule provided in the solicitation.",
+    "section": "Price Quotation Volume II",
+    "page_start": 9,
+    "page_end": 9,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 8
+  },
+  {
+    "id": "3",
+    "label": "Ensure template cells/formulas are visible and unlocked in pricing submission",
+    "category": "Submission",
+    "modality": "SHALL",
+    "quote": "Please ensure that the template cells/formulas are visible and unlocked.",
+    "section": "Price Quotation Volume II",
+    "page_start": 9,
+    "page_end": 9,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 8
+  },
+  {
+    "id": "4",
+    "label": "Submit pricing information correctly and by proposal due date",
+    "category": "Submission",
+    "modality": "SHALL",
+    "quote": "The Contractor shall be responsible for ensuring that the pricing information is submitted correctly and submitted by the proposal due date.",
+    "section": "Price Quotation Volume II",
+    "page_start": 9,
+    "page_end": 9,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 8
+  },
+  {
+    "id": "5",
+    "label": "Use labor rates in HCATS IDIQ Contract for pricing",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "The Quoter shall use the labor rates in their HCATS IDIQ Contract",
+    "section": "Price Quotation Volume II",
+    "page_start": 9,
+    "page_end": 9,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 8
+  },
+  {
+    "id": "6",
+    "label": "Quote labor categories and hours that best meet proposed solution",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "Quoters shall be responsible for quoting the labor categories and hours that best meet the solution they are presenting.",
+    "section": "Price Quotation Volume II",
+    "page_start": 9,
+    "page_end": 9,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 8
+  },
+  {
+    "id": "7",
+    "label": "Use labor category titles and descriptions from HCATS IDIQ contract to map to SOW",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "Quoters shall use the labor category titles and descriptions included in their specific HCATS IDIQ contract to map to those included in the Government’s SOW",
+    "section": "Price Quotation Volume II",
+    "page_start": 9,
+    "page_end": 9,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 8
+  }
+]

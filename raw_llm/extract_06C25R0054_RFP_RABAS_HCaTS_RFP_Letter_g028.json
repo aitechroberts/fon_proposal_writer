@@ -1,0 +1,54 @@
+[
+  {
+    "id": "req-001",
+    "label": "Compliance with CBP Rules and Regulations",
+    "category": "Technical",
+    "modality": "MUST",
+    "quote": "Rules, regulations directives and requirements which are issued by U.S. Customs & Border Protection under their responsibility for good order, administration and security are applicable to all personnel who enter U.S. Customs & Border Protection installations or who travel on Government transportation.",
+    "section": "5. Rules, regulations directives and requirements",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27
+  },
+  {
+    "id": "req-002",
+    "label": "No On-Site Performance on Federal Holidays Except as Defined",
+    "category": "Technical",
+    "modality": "PROHIBITED",
+    "quote": "Except for designated around-the-clock or emergency operations, and/or as defined within the statement of requirements, contractor personnel will not be able to perform on site under this contract with CBP on the holidays set forth above.",
+    "section": "D.6 HOLIDAYS AND ADMINISTRATIVE LEAVE (OCT 2021)",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27
+  },
+  {
+    "id": "req-003",
+    "label": "No Holiday Charges as Direct Charge to Contract",
+    "category": "AdminFormat",
+    "modality": "PROHIBITED",
+    "quote": "The contractor will not charge any holiday as a direct charge to the contract.",
+    "section": "D.6 HOLIDAYS AND ADMINISTRATIVE LEAVE (OCT 2021)",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27
+  },
+  {
+    "id": "req-004",
+    "label": "No Extension or Price Adjustment Due to Holiday Observance Except as Set Forth in Contract",
+    "category": "AdminFormat",
+    "modality": "PROHIBITED",
+    "quote": "Observance of such days by Government personnel shall not be cause for an extension to the delivery schedule or period of performance or adjustment to the price, except as set forth in the contract.",
+    "section": "D.6 HOLIDAYS AND ADMINISTRATIVE LEAVE (OCT 2021)",
+    "page_start": 28,
+    "page_end": 28,
+    "confidence": "high",
+    "source": "llm",
+    "_gidx": 27
+  }
+]

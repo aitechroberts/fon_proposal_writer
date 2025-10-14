@@ -1,0 +1,41 @@
+[
+  {
+    "id": "1",
+    "label": "Provide expert Federal retirement and benefit counseling services",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "The purpose of this statement of work (SOW) is to acquire expert Federal retirement and benefit counseling services along with benefit processing services to support the National Programs Division (NPD), Retirement and Benefits Advisory Services (RABAS) Branch, located in Washington DC.",
+    "section": "2.0 SCOPE",
+    "page_start": 3,
+    "page_end": 3,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 2
+  },
+  {
+    "id": "2",
+    "label": "Provide benefit processing services for CBP employees",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "The purpose of this statement of work (SOW) is to acquire expert Federal retirement and benefit counseling services along with benefit processing services to support the National Programs Division (NPD), Retirement and Benefits Advisory Services (RABAS) Branch, located in Washington DC.",
+    "section": "2.0 SCOPE",
+    "page_start": 3,
+    "page_end": 3,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 2
+  },
+  {
+    "id": "3",
+    "label": "Review, complete, and process health and life insurance requests and retirement applications submitted by employees",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "Reviewing, completing and processing health and life insurance requests and retirement applications submitted by employees.",
+    "section": "2.0 SCOPE",
+    "page_start": 3,
+    "page_end": 3,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 2
+  }
+]

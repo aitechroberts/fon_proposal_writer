@@ -1,0 +1,62 @@
+[
+  {
+    "id": "req-001",
+    "label": "Contractor SHALL protect Privacy Information including PII and SPII.",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "Privacy Information includes both Personally Identifiable Information (PII) and Sensitive Personally Identifiable Information (SPII)... Certain data elements are particularly sensitive and may alone present an increased risk of harm to the individual.",
+    "section": "Privacy Information Definitions and Handling",
+    "page_start": 38,
+    "page_end": 38,
+    "confidence": 0.9,
+    "source": "llm",
+    "_gidx": 37,
+    "_idx": 0,
+    "short_label": "Protect Privacy Information (PII/SPII)"
+  },
+  {
+    "id": "req-002",
+    "label": "Contractor SHALL recognize that non-PII can become PII when combined with other information.",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "it is important to recognize that information that is not PII can become PII whenever additional information becomes available, in any medium or from any source, that would make it possible to identify an individual.",
+    "section": "Privacy Information Definitions and Handling",
+    "page_start": 38,
+    "page_end": 38,
+    "confidence": 0.9,
+    "source": "llm",
+    "_gidx": 37,
+    "_idx": 1,
+    "short_label": "Non-PII can become PII"
+  },
+  {
+    "id": "req-003",
+    "label": "Contractor SHALL treat certain data elements as particularly sensitive stand-alone PII.",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "Examples of stand-alone PII that are particularly sensitive include: Social Security numbers (SSNs), driver’s license or State identification numbers, Alien Registration Numbers (A-numbers), financial account numbers, and biometric identifiers.",
+    "section": "Privacy Information Definitions and Handling",
+    "page_start": 38,
+    "page_end": 38,
+    "confidence": 0.9,
+    "source": "llm",
+    "_gidx": 37,
+    "_idx": 2,
+    "short_label": "Sensitive stand-alone PII"
+  },
+  {
+    "id": "req-001",
+    "label": "Contractor SHALL protect Privacy Information including PII and SPII.",
+    "category": "Privacy & Data Protection",
+    "modality": "SHALL",
+    "quote": "Privacy Information includes both Personally Identifiable Information (PII) and Sensitive Personally Identifiable Information (SPII)... Certain data elements are particularly sensitive and may alone present an increased risk of harm to the individual.",
+    "section": "Privacy Information Definitions and Handling",
+    "page_start": 38,
+    "page_end": 38,
+    "confidence": 0.9,
+    "source": "llm",
+    "_gidx": 37,
+    "_idx": 3,
+    "short_label": "Protect Privacy Information (PII/SPII)"
+  }
+]

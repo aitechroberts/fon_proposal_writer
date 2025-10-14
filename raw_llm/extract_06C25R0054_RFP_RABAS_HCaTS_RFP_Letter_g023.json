@@ -1,0 +1,93 @@
+[
+  {
+    "id": "1",
+    "label": "Contractor employees without PIV cards must sign-in and show government-issued photo ID",
+    "category": "Technical",
+    "modality": "MUST",
+    "quote": "Contractor Employees who do not have their PIV cards must sign-in at lobby guard desk, and show a federal, state, or local government-issued photo identification (e.g., driver’s license that meets the requirements of the REAL ID Act of 2005, US passport, US military ID card, Tribal ID, or Permanent Residence card).",
+    "section": "5.",
+    "page_start": 23,
+    "page_end": 23,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 22
+  },
+  {
+    "id": "2",
+    "label": "Visitors to CBP facilities must sign-in and show government-issued photo ID unless otherwise directed",
+    "category": "Technical",
+    "modality": "REQUIRED",
+    "quote": "All visitors requesting access to CBP facilities are required to sign-in at designated visitor location, depending on the facility’s resources. Visitors are required to show a federal, state, or local government-issued photo identification (e.g., driver’s license that meets the requirements of the REAL ID Act of 2005, US passport, US military ID card, Tribal ID, or Permanent Residence card), unless otherwise directed by the Facility Security Manager (FSM) or CBP Assistant Technical Representative (ATR).",
+    "section": "B.2.",
+    "page_start": 23,
+    "page_end": 23,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 22
+  },
+  {
+    "id": "3",
+    "label": "Visitors must be escorted by CBP employees or contractors with valid CBP-issued PIV card",
+    "category": "Technical",
+    "modality": "MUST",
+    "quote": "Visitors must be escorted to their intended CBP destination by CBP employees or CBP contractors with a valid CBP-issued PIV card capable of operating the turnstiles. Supplemental access cards cannot be used for escorting purposes without a valid CBP-issued PIV card.",
+    "section": "B.3.",
+    "page_start": 23,
+    "page_end": 23,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 22
+  },
+  {
+    "id": "4",
+    "label": "Visitor passes issued only at designated locations; all visitors must pass through screening and be escorted back",
+    "category": "Technical",
+    "modality": "REQUIRED",
+    "quote": "Visitor passes will be issued only at designated locations and/or entrances. All visitors are required to pass through screening at the designated entrances. All visitors must be escorted back to the security desk by a CBP employee or CBP contractor.",
+    "section": "B.4.",
+    "page_start": 23,
+    "page_end": 23,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 22
+  },
+  {
+    "id": "5",
+    "label": "Contractor employees must not disclose sensitive information unless authorized in writing by the CO",
+    "category": "Technical",
+    "modality": "SHALL NOT",
+    "quote": "The Contractor Employee shall not disclose, orally or in writing, any sensitive information to any person unless authorized in writing by the CO.",
+    "section": "III.A.1.",
+    "page_start": 23,
+    "page_end": 23,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 22
+  },
+  {
+    "id": "6",
+    "label": "Contractor employees must take annual IT Security Awareness Training before accessing sensitive information",
+    "category": "Technical",
+    "modality": "REQUIRED",
+    "quote": "The Department of Homeland Security (DHS) requires that Contractor employees take an annual Information Technology Security Awareness Training course before accessing sensitive information under the contract.",
+    "section": "III.A.2.",
+    "page_start": 23,
+    "page_end": 23,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 22
+  },
+  {
+    "id": "7",
+    "label": "IT Security Awareness Training must be completed within thirty (30) days of contract award unless otherwise specified",
+    "category": "Technical",
+    "modality": "SHALL",
+    "quote": "Unless otherwise specified, the training shall be completed within thirty (30) days of contract award",
+    "section": "III.A.2.",
+    "page_start": 23,
+    "page_end": 23,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 22
+  }
+]

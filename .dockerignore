@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+.openhands/
+gpt_attempt/
+
+# Envs
+.venv/
+.env
+.env.*
+
+# VCS & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Data & outputs
+data/outputs/
+tmp_outputs/
+outputs/
+*.xlsx
+*.csv
+*.json
+data/
+test-results/
+*.xlsx
+
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+*.ipynb

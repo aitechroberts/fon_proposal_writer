@@ -1,0 +1,31 @@
+[
+  {
+    "id": "F.1-2",
+    "label": "Submission: Pricing Template must be completed and submitted as Attachment No. 2",
+    "category": "Submission",
+    "modality": "REQUIRED",
+    "quote": "Attachment No. 2 Pricing Template",
+    "section": "F.1",
+    "page_start": 54,
+    "page_end": 54,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 53,
+    "_idx": 0,
+    "short_label": "Submit Prior Experience Questionnaire"
+  },
+  {
+    "id": "F.1-2",
+    "label": "Submission: Pricing Template must be completed and submitted as Attachment No. 2",
+    "category": "Submission",
+    "modality": "REQUIRED",
+    "quote": "Attachment No. 2 Pricing Template",
+    "section": "F.1",
+    "page_start": 54,
+    "page_end": 54,
+    "confidence": "High",
+    "source": "llm",
+    "_gidx": 53,
+    "_idx": 1
+  }
+]

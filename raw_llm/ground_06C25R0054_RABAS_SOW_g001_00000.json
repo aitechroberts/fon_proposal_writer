@@ -1,0 +1,58 @@
+[
+  {
+    "id": "1",
+    "label": "Administrative Support Services",
+    "category": "Management & Staffing",
+    "modality": "SHALL",
+    "quote": "ADMINISTRATIVE SUPPORT PERSONNEL SERVICES",
+    "section": "STATEMENT OF WORK",
+    "page_start": 1,
+    "page_end": 25,
+    "confidence": "High",
+    "source": "Table of Contents, Page 2: 'ADMINISTRATIVE SUPPORT PERSONNEL SERVICES' under STATEMENT OF WORK.",
+    "_gidx": 1,
+    "_idx": 0
+  },
+  {
+    "id": "2",
+    "label": "Adherence to Deliverables Schedule",
+    "category": "Schedule & Milestones",
+    "modality": "MUST",
+    "quote": "DELIVERABLES AND DELIVERY SCHEDULE",
+    "section": "5.0 DELIVERABLES AND DELIVERY SCHEDULE",
+    "page_start": 12,
+    "page_end": 12,
+    "confidence": "High",
+    "source": "Table of Contents, Page 2: '5.0 DELIVERABLES AND DELIVERY SCHEDULE' listed on page 12.",
+    "_gidx": 1,
+    "_idx": 1
+  },
+  {
+    "id": "3",
+    "label": "Security Compliance",
+    "category": "Security (Personnel & Facility)",
+    "modality": "MUST",
+    "quote": "SECURITY",
+    "section": "7.0 SECURITY",
+    "page_start": 13,
+    "page_end": 21,
+    "confidence": "High",
+    "source": "Table of Contents, Page 2: '7.0 SECURITY' listed on pages 13-21.",
+    "_gidx": 1,
+    "_idx": 2
+  },
+  {
+    "id": "4",
+    "label": "Special Considerations",
+    "category": "General Administrative",
+    "modality": "SHOULD",
+    "quote": "SPECIAL CONSIDERATIONS",
+    "section": "8.0 SPECIAL CONSIDERATIONS",
+    "page_start": 21,
+    "page_end": 22,
+    "confidence": "High",
+    "source": "Table of Contents, Page 2: '8.0 SPECIAL CONSIDERATIONS' listed on pages 21-22.",
+    "_gidx": 1,
+    "_idx": 3
+  }
+]

@@ -13,9 +13,11 @@ from typing import Any, Dict, List, Tuple
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from src.matrix.export_excel import save_excel
 from src.io.loaders import pdf_to_pages
-
+import litellm
+from litellm import register_model
 import dspy
 from src.config import settings
+
 
 # -------------------- Logging --------------------
 _LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -25,6 +27,20 @@ logging.basicConfig(
 )
 log = logging.getLogger("main")
 log.info("Starting processing")
+
+CLEAR_CACHE_ON_STARTUP = os.getenv("CLEAR_CACHE", "0") in ("1", "true", "TRUE", "yes")
+
+if CLEAR_CACHE_ON_STARTUP:
+    try:
+        import dspy
+        if hasattr(dspy, 'cache'):
+            dspy.cache.reset_memory_cache()
+            if hasattr(dspy.cache, 'disk_cache'):
+                dspy.cache.disk_cache.clear()
+            log.info("✓ DSPy cache cleared on startup")
+    except Exception as e:
+        log.warning(f"Failed to clear cache: {e}")
+
 
 LOG_LLM = os.getenv("LOG_LLM", "0") in ("1", "true", "TRUE", "yes", "YES")
 RAW_DIR = Path(os.getenv("RAW_DUMP_DIR", "raw_llm"))
@@ -51,7 +67,7 @@ def _save_json(items: List[Dict[str, Any]], path: Path) -> None:
 def _save_csv(items: List[Dict[str, Any]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     headers = (
-        ["label","category","modality","quote","section","page_start","page_end","source","confidence","doc_name"]
+        ["category","modality","quote","section","page_start","page_end","source","confidence","doc_name"]
         if not items else sorted({k for r in items for k in r.keys()})
     )
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -102,56 +118,67 @@ def _cleanup_outputs() -> None:
             except Exception as e:
                 log.warning("Failed to cleanup %s: %s", dir_path, e)
 
-# -------------------- DSPy init (force Azure) --------------------
 def _init_dspy_direct() -> None:
     """
-    Configure DSPy/LiteLLM to use Azure OpenAI explicitly.
-    Export the environment variables LiteLLM expects, then configure the LM.
+    Configure DSPy - patch litellm.completion FIRST before anything else.
     """
+    from functools import wraps
+    
+    # STEP 1: PATCH LITELLM FIRST (before any DSPy objects are created)
+    _original_litellm_completion = litellm.completion
+    
+    @wraps(_original_litellm_completion)
+    def _force_max_tokens_completion(*args, **kwargs):
+        # ALWAYS force max_tokens to 32000
+        original_max = kwargs.get('max_tokens')
+        kwargs['max_tokens'] = 32000
+        
+        if original_max and original_max != 32000:
+            log.debug(f"⚠️ Overriding max_tokens: {original_max} -> 32000")
+        
+        return _original_litellm_completion(*args, **kwargs)
+    
+    litellm.completion = _force_max_tokens_completion
+    log.info("✅ Patched litellm.completion to force max_tokens=32000")
+    
+    # STEP 2: Set up environment
     base = (settings.azure_api_base or "").rstrip("/")
     os.environ["AZURE_API_KEY"] = settings.azure_api_key or ""
     os.environ["AZURE_API_BASE"] = base
     os.environ["AZURE_API_VERSION"] = settings.azure_api_version or "2024-12-01-preview"
-    os.environ["OPENAI_API_KEY"] = settings.azure_api_key or ""  # safety
-
+    os.environ["OPENAI_API_KEY"] = settings.azure_api_key or ""
+    
+    litellm.drop_params = True
+    litellm.set_verbose = False
+    
+    # STEP 3: Create DSPy LM (will use patched litellm.completion)
     azure_model = f"azure/{settings.azure_openai_deployment}"
-
+    
     lm = dspy.LM(
         model=azure_model,
         api_key=settings.azure_api_key,
         api_base=f"{base}/openai/v1/",
         temperature=0.0,
-        max_tokens=32700,
+        max_tokens=32000,  # Won't matter, patch will force it anyway
     )
-    dspy.configure(lm=lm, adapter=dspy.JSONAdapter(), track_usage=False, cache=True)
-    def _probe_dspy_limits():
-        try:
-            # 1) what DSPy thinks the global max is
-            lm_obj = dspy.settings.lm  # the configured LM instance
-            cap = getattr(lm_obj, "max_tokens", None) or getattr(getattr(lm_obj, "client", None), "max_tokens", None)
-            logging.getLogger("main").info(f"[DSPy] lm.max_tokens seen as: {cap}")
-
-            # 2) if using LiteLLM underneath, check request kwargs via a tiny dry-run
-            _ = dspy.Predict(lambda x: x)  # no-op, forces client construction paths
-        except Exception as e:
-            logging.getLogger("main").warning(f"_probe_dspy_limits: {e}")
-
-    _probe_dspy_limits()
-    # Optional variant application (no run_experiment)
+    
+    # STEP 4: Configure DSPy (ONLY ONCE!)
+    dspy.configure(lm=lm, adapter=dspy.JSONAdapter(), track_usage=False, cache=False)
+    
+    log.info(
+        "Configured DSPy: deployment=%r, litellm.completion PATCHED for max_tokens=32000",
+        settings.azure_openai_deployment
+    )
+    
+    # Optional variant application
     try:
         from src.experiments.config_variants import load_variant, apply_variant
         variant = load_variant()
         apply_variant(variant)
-        log.info(
-            "Applied variant and configured Azure LM: dep=%r base=%r version=%r",
-            settings.azure_openai_deployment, base, settings.azure_api_version
-        )
+        log.info("Applied variant: dep=%r base=%r version=%r",
+                settings.azure_openai_deployment, base, settings.azure_api_version)
     except Exception as e:
         log.warning("Variant not applied (optional): %s", e)
-        log.info(
-            "Configured Azure LM: dep=%r base=%r version=%r",
-            settings.azure_openai_deployment, base, settings.azure_api_version
-        )
 
 # -------------------- Page grouping --------------------
 def _group_pages_into_chunks(pages: List[Tuple[int,str]], pages_per_chunk: int) -> List[Dict[str, Any]]:
@@ -205,9 +232,9 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
     batch_grounder   = BatchGrounder()
 
     # knobs
-    max_chunks       = int(os.getenv("MAX_CHUNKS", "0"))         # 0 = no cap (we’ll cap after grouping)
+    max_chunks       = int(os.getenv("MAX_CHUNKS", "1"))         # 0 = no cap (we’ll cap after grouping)
     max_chars        = int(os.getenv("MAX_CHARS", "12000"))       # truncate very long grouped chunks
-    pages_per_chunk  = int(os.getenv("PAGES_PER_CHUNK", "1"))    
+    pages_per_chunk  = int(os.getenv("PAGES_PER_CHUNK", "2"))    
     batch_size       = int(os.getenv("BATCH_SIZE", "25"))
 
     results: List[Dict[str, Any]] = []
@@ -301,7 +328,6 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
         for r in grounded_all:
             r.pop("_gidx", None)
             r["doc_name"] = pdf_path.name
-            r.setdefault("label", r.get("label", r.get("title", "")))
             r.setdefault("category", r.get("category", "Other"))
             r.setdefault("modality", r.get("modality", "UNKNOWN"))
             r.setdefault("quote", r.get("quote", ""))
@@ -330,7 +356,6 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
                 
             # Normalize to expected schema
             r["doc_name"] = pdf_path.name
-            r.setdefault("label", r.get("label", r.get("title", "")))
             r.setdefault("category", r.get("category", "Other"))
             r.setdefault("modality", r.get("modality", "UNKNOWN"))
             r.setdefault("quote", r.get("quote", ""))
@@ -341,14 +366,14 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
             r.setdefault("confidence", 0.5)
             
             # Validate minimum required fields
-            required_fields = ["label", "category", "modality", "quote"]
+            required_fields = ["category", "modality", "quote"]
             if all(r.get(f) for f in required_fields):
                 valid_reqs.append(r)
             else:
                 skipped_count += 1
                 missing = [f for f in required_fields if not r.get(f)]
                 log.warning("SKIPPING invalid requirement (missing %s): %s", 
-                        missing, r.get("label", str(r)[:60]))
+                        missing,)
 
         log.info("File %s done: extracted=%d classified=%d grounded=%d valid=%d skipped=%d",
                 pdf_path.name, len(extracted_all), len(classified_all), 

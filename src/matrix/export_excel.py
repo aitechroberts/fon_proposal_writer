@@ -9,7 +9,7 @@ from openpyxl.utils import get_column_letter
 PathLike = Union[str, Path]
 
 PREFERRED_ORDER = [
-    "id", "label", "category", "modality",
+    "id", "category", "modality",
     "quote", "section", "page_start", "page_end",
     "confidence", "source", "doc_name",
 ]

@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
+import re
 
 # External
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
@@ -405,6 +406,13 @@ def process_opportunity(opportunity_id: str) -> str:
     - PDF: .pdf
     - Word: .docx, .doc
     - Excel: .xlsx, .xls
+
+    Args:
+        opportunity_id: The opportunity ID (used for input folder)
+        output_name: Custom name for output files (optional, defaults to opportunity_id)
+    
+    Returns:
+        SAS URL for downloading the Excel file
     """
     inputs_root = Path("data/inputs")
     specific_dir = inputs_root / opportunity_id if opportunity_id else None
@@ -449,6 +457,10 @@ def process_opportunity(opportunity_id: str) -> str:
     # Run extraction pipeline
     combined_reqs = run_dspy_pipeline(opportunity_id, all_files)
 
+    # Use user input file name for output filenames
+    file_base_name = re.sub(r'[^\w\s-]', '', file_base_name).strip()
+    file_base_name = re.sub(r'[-\s]+', '-', file_base_name)
+
     # Save per-document outputs to tmp_outputs/
     tmp_dir = Path("tmp_outputs")
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -467,9 +479,9 @@ def process_opportunity(opportunity_id: str) -> str:
     out_dir = Path("outputs")
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    final_json = out_dir / f"{(opportunity_id or 'default')}.requirements.json"
-    final_csv = out_dir / f"{(opportunity_id or 'default')}.matrix.csv"
-    final_xlsx = out_dir / f"{(opportunity_id or 'default')}.matrix.xlsx"
+    final_json = out_dir / f"{file_base_name}.requirements.json"
+    final_csv  = out_dir / f"{file_base_name}.matrix.csv"
+    final_xlsx = out_dir / f"{file_base_name}.matrix.xlsx"
 
     _save_json(combined_reqs, final_json)
     log.info(f"Saved {final_json}")

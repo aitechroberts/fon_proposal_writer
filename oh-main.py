@@ -1,200 +1,77 @@
-# main.py
-"""
-Simplified main entry point for RFP compliance extraction.
-Uses the refactored modular components.
-"""
-from __future__ import annotations
+def process_opportunity(opportunity_id: str, output_name: str = None) -> str:
+    """
+    Process opportunity and generate compliance matrix.
+    
+    Args:
+        opportunity_id: The opportunity ID (used for input folder)
+        output_name: Custom name for output files (optional, defaults to opportunity_id)
+    
+    Returns:
+        SAS URL for downloading the Excel file
+    """
+    inputs_root = Path("data/inputs")
+    specific_dir = inputs_root / opportunity_id if opportunity_id else None
 
-import json
-import logging
-import sys
-from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any
+    if specific_dir and specific_dir.exists():
+        pdfs = sorted(specific_dir.glob("*.pdf"))
+    else:
+        pdfs = sorted(inputs_root.glob("*.pdf"))
 
-from langfuse import observe, get_client
-from azure.storage.blob import BlobServiceClient
-
-# Import refactored components
-from src.config import settings
-from src.observability.tracing import initialize_tracing, flush_traces
-from src.pipeline.run_experiment import initialize_dspy, run_experiment as run_pipeline_experiment
-from src.io.loaders import pdf_to_pages
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO if not settings.debug else logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-def setup_azure_blob() -> BlobServiceClient:
-    """Initialize Azure Blob Storage client."""
-    try:
-        blob_service = BlobServiceClient.from_connection_string(
-            settings.azure_storage_connection_string
+    if not pdfs:
+        raise FileNotFoundError(
+            f"No PDFs found for opportunity '{opportunity_id}'. "
+            f"Place files in data/inputs/{opportunity_id}/ or data/inputs/."
         )
-        container_client = blob_service.get_container_client(settings.azure_blob_container)
-        
-        # Ensure container exists
-        try:
-            container_client.create_container()
-            logger.info(f"Created blob container: {settings.azure_blob_container}")
-        except Exception:
-            logger.debug(f"Blob container {settings.azure_blob_container} already exists")
-        
-        return blob_service
-    except Exception as e:
-        logger.error(f"Failed to setup Azure Blob Storage: {e}")
-        raise
 
-def upload_json_to_blob(blob_service: BlobServiceClient, data: Dict[str, Any], 
-                       prefix: str = "runs") -> str:
-    """Upload JSON data to Azure Blob Storage."""
-    try:
-        container_client = blob_service.get_container_client(settings.azure_blob_container)
-        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-        blob_name = f"{prefix}/requirements_{timestamp}.json"
-        
-        json_data = json.dumps(data, indent=2, ensure_ascii=False)
-        container_client.upload_blob(name=blob_name, data=json_data, overwrite=True)
-        
-        logger.info(f"Uploaded results to blob: {blob_name}")
-        return blob_name
-    except Exception as e:
-        logger.error(f"Failed to upload to blob storage: {e}")
-        raise
+    log.info("Processing %d PDF(s) for %s", len(pdfs), opportunity_id or "[default inputs]")
 
-def read_text_from_pdfs(pdf_paths: List[str]) -> List[Dict[str, Any]]:
-    """Extract text from PDF files."""
-    docs = []
-    for path in pdf_paths:
-        try:
-            logger.info(f"Reading PDF: {path}")
-            pages = pdf_to_pages(path)
-            text = "\n".join(page_text for _, page_text in pages)
-            docs.append({"path": path, "text": text, "pages": len(pages)})
-        except Exception as e:
-            logger.error(f"Failed to read PDF {path}: {e}")
-            continue
+    combined_reqs = run_dspy_pipeline(opportunity_id, pdfs)
+
+    # Use custom output_name if provided, otherwise fall back to opportunity_id
+    file_base_name = output_name or opportunity_id or 'default'
     
-    return docs
+    # Sanitize filename (remove invalid characters)
+    import re
+    file_base_name = re.sub(r'[^\w\s-]', '', file_base_name).strip()
+    file_base_name = re.sub(r'[-\s]+', '-', file_base_name)
 
-@observe(name="main_experiment_run")
-def run_experiment(pdf_paths: List[str]) -> Dict[str, Any]:
-    """Run the complete experiment pipeline."""
+    # per-doc tmp outputs (still using opportunity_id for organization)
+    tmp_dir = Path("tmp_outputs"); tmp_dir.mkdir(parents=True, exist_ok=True)
+    for p in pdfs:
+        doc_items = [r for r in combined_reqs if r.get("doc_name") == p.name]
+        base = f"{p.stem}.{opportunity_id or 'default'}"
+        _save_json(doc_items, tmp_dir / f"{base}.requirements.json")
+        _save_csv(doc_items,  tmp_dir / f"{base}.matrix.csv")
+        save_excel(doc_items, tmp_dir / f"{base}.matrix.xlsx")
+        log.info("Saved tmp outputs for %s (%d rows)", p.name, len(doc_items))
+
+    # Final combined outputs using custom filename
+    out_dir = Path("outputs"); out_dir.mkdir(parents=True, exist_ok=True)
+    final_json = out_dir / f"{file_base_name}.requirements.json"
+    final_csv  = out_dir / f"{file_base_name}.matrix.csv"
+    final_xlsx = out_dir / f"{file_base_name}.matrix.xlsx"
+
+    _save_json(combined_reqs, final_json)
+    log.info(f"Saved {final_json}")
+    _save_csv(combined_reqs,  final_csv)
+    log.info(f"Saved {final_csv}")
     try:
-        # Initialize components
-        initialize_tracing()
-        initialize_dspy()
-        blob_service = setup_azure_blob()
-        
-        # Extract text from PDFs
-        docs = read_text_from_pdfs(pdf_paths)
-        if not docs:
-            raise ValueError("No valid PDF documents found")
-        
-        logger.info(f"Processing {len(docs)} documents")
-        
-        # For now, use the simple extraction approach
-        # In the future, this could call the full pipeline
-        results = []
-        for doc in docs:
-            # This is a simplified version - the full pipeline would use
-            # the modular components from src.pipeline.run_experiment
-            result = {
-                "source_path": doc["path"],
-                "requirements": [],  # Would be populated by extraction pipeline
-                "meta": {
-                    "pages": doc["pages"],
-                    "text_length": len(doc["text"]),
-                    "extraction_method": "simplified"
-                }
-            }
-            results.append(result)
-        
-        # Create final payload
-        payload = {
-            "meta": {
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "dspy_model": f"azure/{settings.azure_openai_deployment}",
-                "model_type": settings.dspy_model_type,
-                "langfuse_host": settings.langfuse_host,
-                "total_documents": len(docs),
-                "total_requirements": sum(len(r["requirements"]) for r in results)
-            },
-            "documents": results,
-        }
-        
-        # Upload to blob storage
-        blob_name = upload_json_to_blob(blob_service, payload)
-        payload["artifact"] = {
-            "azure_blob": {
-                "container": settings.azure_blob_container,
-                "name": blob_name
-            }
-        }
-        
-        return payload
-        
+        save_excel(combined_reqs, final_xlsx)
+        log.info("Final combined XLSX: %s (%d rows)", final_xlsx, len(combined_reqs))
     except Exception as e:
-        logger.error(f"Experiment failed: {e}")
+        log.error(f"Failed to save final XLSX: {e}")
         raise
 
-def main():
-    """Main entry point."""
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <file1.pdf> <file2.pdf> ...")
-        print("       python main.py --pipeline <input_dir> [experiment_name]")
-        sys.exit(1)
+    # Upload to blob storage
+    conn_str = settings.azure_storage_connection_string
+    container = settings.azure_blob_container
+    if not conn_str or not container:
+        raise RuntimeError("Set AZURE_STORAGE_CONNECTION_STRING and AZURE_BLOB_CONTAINER in .env file.")
     
-    try:
-        # Check if using pipeline mode
-        if sys.argv[1] == "--pipeline":
-            if len(sys.argv) < 3:
-                print("Pipeline mode requires input directory")
-                sys.exit(1)
-            
-            input_dir = sys.argv[2]
-            exp_name = sys.argv[3] if len(sys.argv) > 3 else "baseline"
-            
-            logger.info(f"Running pipeline experiment on {input_dir}")
-            results = run_pipeline_experiment(input_dir, exp_name)
-            print(f"Pipeline completed. Processed {len(results)} files.")
-            
-        else:
-            # Simple mode - process individual PDFs
-            pdf_paths = sys.argv[1:]
-            
-            # Validate PDF files exist
-            valid_paths = []
-            for path in pdf_paths:
-                if Path(path).exists() and path.lower().endswith('.pdf'):
-                    valid_paths.append(path)
-                else:
-                    logger.warning(f"Skipping invalid PDF path: {path}")
-            
-            if not valid_paths:
-                print("No valid PDF files provided")
-                sys.exit(1)
-            
-            logger.info(f"Processing {len(valid_paths)} PDF files")
-            result = run_experiment(valid_paths)
-            
-            # Print summary
-            print(json.dumps(result, indent=2)[:4000])
-            if len(json.dumps(result, indent=2)) > 4000:
-                print("\n... (output truncated)")
-        
-        # Ensure all traces are sent
-        flush_traces()
-        
-    except KeyboardInterrupt:
-        logger.info("Interrupted by user")
-        sys.exit(1)
-    except Exception as e:
-        logger.error(f"Application failed: {e}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+    sas_url = _upload_blob_and_sas(final_xlsx, container, conn_str, sas_hours=1)
+    log.info("Uploaded to blob & generated SAS URL.")
+    
+    # Cleanup local files after successful upload
+    _cleanup_outputs()
+    
+    return sas_url

@@ -57,6 +57,14 @@ if use_highergov and not has_highergov_key:
     st.info("Get Jonathan to integrate API Key")
     st.stop()
 
+st.subheader("Output Settings")
+custom_filename = st.text_input(
+    "Output Filename (optional)",
+    value="",
+    placeholder="my-proposal-compliance-matrix",
+    help="Custom name for the output Excel file. If empty, will use opportunity ID."
+)
+
 st.divider()
 
 # ============= Input Fields =============
@@ -153,7 +161,8 @@ if process_clicked:
             
             with st.spinner("Fetching documents from HigherGov API..."):
                 # This downloads files and processes them
-                sas_url = import_from_highergov_and_process(opportunity_id.strip())
+                output_name = custom_filename.strip() if custom_filename.strip() else opportunity_id
+                sas_url = process_opportunity(opportunity_id, output_name=output_name)
             
             st.success("✅ Processing complete!")
             

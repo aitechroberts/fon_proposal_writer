@@ -398,7 +398,7 @@ def run_dspy_pipeline(opportunity_id: str, input_files: List[Path]) -> List[Dict
     return results
 
 # -------------------- Streamlit entry --------------------
-def process_opportunity(opportunity_id: str) -> str:
+def process_opportunity(opportunity_id: str, output_name: str = None) -> str:
     """
     Process all documents (PDF, Word, Excel) for an opportunity.
     
@@ -456,6 +456,8 @@ def process_opportunity(opportunity_id: str) -> str:
 
     # Run extraction pipeline
     combined_reqs = run_dspy_pipeline(opportunity_id, all_files)
+
+    file_base_name = output_name or opportunity_id or 'default'
 
     # Use user input file name for output filenames
     file_base_name = re.sub(r'[^\w\s-]', '', file_base_name).strip()

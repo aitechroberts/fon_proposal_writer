@@ -189,7 +189,8 @@ if process_clicked:
                 st.info("⚙️ Extracting requirements...")
                 
                 with st.spinner("Processing documents with AI... This may take several minutes."):
-                    sas_url = process_opportunity(opportunity_id)
+                    output_name = custom_filename.strip() if custom_filename.strip() else opportunity_id
+                    sas_url = process_opportunity(opportunity_id, output_name=output_name)
                 
                 st.success("✅ Processing complete!")
                 

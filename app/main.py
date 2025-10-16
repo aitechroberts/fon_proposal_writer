@@ -518,7 +518,7 @@ def process_opportunity(opportunity_id: str, output_name: str = None) -> str:
     
     return sas_url
 
-def import_from_highergov_and_process(opportunity_id: str) -> str:
+def import_from_highergov_and_process(opportunity_id: str, output_name: str = None) -> str:
     """
     Import files from HigherGov and process them through the pipeline.
     
@@ -557,7 +557,7 @@ def import_from_highergov_and_process(opportunity_id: str) -> str:
     # Step 2: Process using existing pipeline
     log.info("Starting document processing pipeline...")
     try:
-        sas_url = process_opportunity(opportunity_id)
+        sas_url = process_opportunity(opportunity_id, output_name=output_name)
         log.info("Processing complete for HigherGov opportunity: %s", opportunity_id)
         return sas_url
     except Exception as e:

@@ -250,6 +250,8 @@ Requirement Linking: Identify dependencies between requirements
 Section-Aware Extraction: Target specific RFP sections ("Instructions to Offerors", "Evaluation Criteria")
 Web UI Improvements: Progress bar, real-time logs, cancel button
 
+Combine Matrices: 
+
 
 RESOURCE_GROUP="proposal-rg"
 LOCATION="eastus"
@@ -257,3 +259,59 @@ ACR_NAME="proposalapp"  # Unique name
 APP_NAME="proposal-extractor"
 ENVIRONMENT_NAME="proposal-env"
 IMAGE_NAME="proposal-app"
+
+# Create environment
+az containerapp env create \
+  --name $ENVIRONMENT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION
+
+# Get ACR credentials
+ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query passwords[0].value -o tsv)
+
+# Create app
+az containerapp create \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --environment $ENVIRONMENT_NAME \
+  --image $ACR_SERVER/$IMAGE_NAME:latest \
+  --registry-server $ACR_SERVER \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 8501 \
+  --ingress external \
+  --min-replicas 1 \
+  --max-replicas 3 \
+
+source .env
+
+az containerapp secret set \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --secrets \
+    azure-api-key="$AZURE_API_KEY" \
+    azure-api-base="$AZURE_API_BASE" \
+    azure-openai-deployment="$AZURE_OPENAI_DEPLOYMENT" \
+    azure-storage-connection="$AZURE_STORAGE_CONNECTION_STRING" \
+    azure-storage-key="AZURE_STORAGE_KEY" \
+    langfuse-public-key="$LANGFUSE_PUBLIC_KEY" \
+    langfuse-secret-key="$LANGFUSE_SECRET_KEY" \
+    highergov-api-key="$HIGHERGOV_API_KEY"
+
+az containerapp update \
+  --name $APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --set-env-vars \
+    AZURE_API_KEY=secretref:azure-api-key \
+    AZURE_API_BASE=secretref:azure-api-base \
+    AZURE_API_VERSION=2024-12-01-preview \
+    AZURE_OPENAI_DEPLOYMENT=secretref:azure-openai-deployment \
+    AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection \
+    AZURE_STORAGE_KEY=secretref:azure-storage-key \
+    AZURE_BLOB_CONTAINER=proposal-container \
+    LANGFUSE_PUBLIC_KEY=secretref:langfuse-public-key \
+    LANGFUSE_SECRET_KEY=secretref:langfuse-secret-key \
+    LANGFUSE_HOST=https://cloud.langfuse.com \
+    HIGHERGOV_API_KEY=secretref:highergov-api-key \
+    LOG_LEVEL=INFO

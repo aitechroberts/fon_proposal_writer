@@ -53,7 +53,6 @@ CLEAR_CACHE_ON_STARTUP = os.getenv("CLEAR_CACHE", "0") in ("1", "true", "TRUE", 
 
 if CLEAR_CACHE_ON_STARTUP:
     try:
-        import dspy
         if hasattr(dspy, 'cache'):
             dspy.cache.reset_memory_cache()
             if hasattr(dspy.cache, 'disk_cache'):
@@ -127,7 +126,7 @@ def _init_dspy_direct() -> None:
     Configure DSPy - patch litellm.completion FIRST before anything else.
     """
     from functools import wraps
-    
+
     # STEP 1: PATCH LITELLM FIRST (before any DSPy objects are created)
     _original_litellm_completion = litellm.completion
     
@@ -228,6 +227,12 @@ def run_dspy_pipeline(opportunity_id: str, input_files: List[Path]) -> List[Dict
       - BatchClassifier across many requirements (default 25 per call)
       - BatchGrounder per chunk in batches (default 25 per call)
     """
+    if hasattr(dspy, 'cache'):
+        dspy.cache.reset_memory_cache()
+    if hasattr(dspy.cache, 'disk_cache'):
+        dspy.cache.disk_cache.clear()
+    log.info("✓ DSPy cache cleared before processing")
+
     _init_dspy_direct()
 
     # Import AFTER configure so predictors bind correctly

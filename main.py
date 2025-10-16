@@ -20,6 +20,7 @@ from src.matrix.export_excel import save_excel
 from src.io.loaders import load_document
 from src.io.smart_loader import load_document_smart, get_extraction_stats
 from src.config import settings
+from src.integrations.highergov import ingest_highergov_opportunity
 
 
 # -------------------- Logging --------------------
@@ -497,3 +498,49 @@ def process_opportunity(opportunity_id: str) -> str:
     _cleanup_outputs()
     
     return sas_url
+
+def import_from_highergov_and_process(opportunity_id: str) -> str:
+    """
+    Import files from HigherGov and process them through the pipeline.
+    
+    Workflow:
+    1. Download all files from HigherGov for this opportunity
+    2. Save to data/inputs/{opportunity_id}/
+    3. Run existing process_opportunity() which discovers and processes files
+    4. Return SAS URL to download compliance matrix
+    
+    Args:
+        opportunity_id: HigherGov or SAM.gov opportunity ID
+        
+    Returns:
+        SAS URL for downloading Excel compliance matrix
+        
+    Raises:
+        HigherGovError: If download fails
+        RuntimeError: If processing fails
+    """
+    log.info("=" * 60)
+    log.info("Importing files from HigherGov for: %s", opportunity_id)
+    log.info("=" * 60)
+    
+    # Step 1: Download files from HigherGov
+    try:
+        files = ingest_highergov_opportunity(opportunity_id)
+        log.info(
+            "Downloaded %d file(s) from HigherGov: %s",
+            len(files),
+            [f.name for f in files]
+        )
+    except Exception as e:
+        log.error(f"Failed to download from HigherGov: {e}")
+        raise
+    
+    # Step 2: Process using existing pipeline
+    log.info("Starting document processing pipeline...")
+    try:
+        sas_url = process_opportunity(opportunity_id)
+        log.info("Processing complete for HigherGov opportunity: %s", opportunity_id)
+        return sas_url
+    except Exception as e:
+        log.error(f"Processing failed: {e}")
+        raise

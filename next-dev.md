@@ -243,19 +243,17 @@ conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 
 Next Steps / Future Enhancements
 
-Semantic Deduplication: Use embeddings to merge similar requirements
 Parallel Processing: Process multiple documents concurrently
 Prompt Optimization: Use DSPy's MIPROv2 with labeled training data
 Better Error Recovery: Retry failed batches with smaller batch sizes
 Requirement Linking: Identify dependencies between requirements
 Section-Aware Extraction: Target specific RFP sections ("Instructions to Offerors", "Evaluation Criteria")
-Export to Word: Generate compliance matrix in DOCX format
 Web UI Improvements: Progress bar, real-time logs, cancel button
 
 
-Questions for Next Session
-
-Do we need to handle multi-column RFP layouts? (Currently assumes single column)
-Should we add a "review" step where users can edit extracted requirements before download?
-Do we need to preserve original PDF formatting (tables, bullets) in the quote field?
-Should we track which requirements come from Attachments vs. main RFP body?
+RESOURCE_GROUP="proposal-rg"
+LOCATION="eastus"
+ACR_NAME="proposalapp"  # Unique name
+APP_NAME="proposal-extractor"
+ENVIRONMENT_NAME="proposal-env"
+IMAGE_NAME="proposal-app"

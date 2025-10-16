@@ -48,6 +48,7 @@ Problem: LiteLLM was capping max_tokens at 4000 despite GPT-4.1 supporting 32k.
 Solution: Monkey-patch litellm.completion() to force max_tokens=32000:
 python_original_completion = litellm.completion
 
+
 @wraps(_original_completion)
 def _patched_completion(*args, **kwargs):
     if kwargs.get('max_tokens', 0) < 16000:

@@ -1,6 +1,6 @@
 # main.py
 from __future__ import annotations
-
+# Base Libraries
 import os
 import json
 import csv
@@ -8,14 +8,17 @@ import time
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple, Dict, Any
 
+# External
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
-from src.matrix.export_excel import save_excel
-from src.io.loaders import pdf_to_pages
 import litellm
-from litellm import register_model
 import dspy
+
+# Modules
+from src.matrix.export_excel import save_excel
+from src.io.loaders import load_document
+from src.io.smart_loader import load_document_smart, get_extraction_stats
 from src.config import settings
 
 
@@ -213,11 +216,13 @@ def _group_pages_into_chunks(pages: List[Tuple[int,str]], pages_per_chunk: int) 
     return chunks
 
 # -------------------- Core pipeline --------------------
-def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[str, Any]]:
+def run_dspy_pipeline(opportunity_id: str, input_files: List[Path]) -> List[Dict[str, Any]]:
     """
+    Process multiple documents (PDF, Word, Excel) and extract requirements.
+    
     1) Initialize DSPy (Azure via LiteLLM).
     2) Batched Calls:
-      - Group pages into larger chunks (default 1 pages each)
+      - Group pages into larger chunks (default 1 page each)
       - One Extractor call per grouped chunk
       - BatchClassifier across many requirements (default 25 per call)
       - BatchGrounder per chunk in batches (default 25 per call)
@@ -232,55 +237,66 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
     batch_grounder   = BatchGrounder()
 
     # knobs
-    max_chunks       = int(os.getenv("MAX_CHUNKS", "1"))         # 0 = no cap (we’ll cap after grouping)
-    max_chars        = int(os.getenv("MAX_CHARS", "12000"))       # truncate very long grouped chunks
-    pages_per_chunk  = int(os.getenv("PAGES_PER_CHUNK", "2"))    
-    batch_size       = int(os.getenv("BATCH_SIZE", "25"))
+    max_chunks       = int(os.getenv("MAX_CHUNKS", "0"))         # 0 = no cap
+    max_chars        = int(os.getenv("MAX_CHARS", "12000"))      # truncate very long chunks
+    pages_per_chunk  = int(os.getenv("PAGES_PER_CHUNK", "1"))   # changed default to 1
+    batch_size       = int(os.getenv("BATCH_SIZE", "20"))
 
     results: List[Dict[str, Any]] = []
 
-    for pdf_path in input_pdfs:
-        log.info("Loading pages for: %s", pdf_path.name)
+    for file_path in input_files:
+        file_type = file_path.suffix.lower()
+        log.info(f"Loading {file_type} file: {file_path.name}")
+        
         t0 = time.perf_counter()
-        pages = pdf_to_pages(str(pdf_path))
+        
+        try:
+            # Universal loader - handles PDF, Word, Excel
+            pages = load_document_smart(str(file_path))
+        except Exception as e:
+            log.error(f"Failed to load {file_path.name}: {e}")
+            continue  # Skip this file and move to next
+        
         t1 = time.perf_counter()
-        log.info("Loaded %d pages in %.2fs from %s", len(pages), t1 - t0, pdf_path.name)
+        log.info(f"Loaded {len(pages)} pages/sections in {t1 - t0:.2f}s from {file_path.name}")
 
-        # Use heading-aware chunk indices to keep semantic breaks, but re-pack into 3-page blocks
-        # If you prefer heading-aware only, comment out grouping and use heading_aware_chunks(pages)
+        # Group pages into chunks
         grouped = _group_pages_into_chunks(pages, pages_per_chunk)
         if max_chunks > 0:
             grouped = grouped[:max_chunks]
-        log.info("Grouped chunks for %s: %d (pages_per_chunk=%s)", pdf_path.name, len(grouped), pages_per_chunk)
+        log.info(f"Grouped chunks for {file_path.name}: {len(grouped)} (pages_per_chunk={pages_per_chunk})")
 
         # ---------- Extract per grouped chunk ----------
         extracted_all: List[Dict[str, Any]] = []
-        per_chunk_extracted: List[List[Dict[str, Any]]] = []  # to preserve mapping for grounding
+        per_chunk_extracted: List[List[Dict[str, Any]]] = []
+        
         for idx, chunk in enumerate(grouped, start=1):
             text = chunk.get("text", "") or ""
             if max_chars > 0 and len(text) > max_chars:
                 chunk = dict(chunk)
                 chunk["text"] = text[:max_chars] + "\n\n[TRUNCATED FOR LENGTH]"
+            
             preview = (chunk["text"] or "")[:180].replace("\n", " ")
-            log.debug("[EXTRACT] %s gchunk %d/%d len=%d preview=%r",
-                      pdf_path.name, idx, len(grouped), len(chunk["text"]), preview)
+            log.debug(f"[EXTRACT] {file_path.name} chunk {idx}/{len(grouped)} len={len(chunk['text'])} preview={preview!r}")
 
             te0 = time.perf_counter()
-            reqs = extractor(chunk)  # returns list[dict]
+            reqs = extractor(chunk)
             te1 = time.perf_counter()
+            
             for r in reqs:
                 r.setdefault("source", "llm")
-                # remember which grouped chunk produced this req (for grounding later)
-                r["_gidx"] = idx - 1
+                r["_gidx"] = idx - 1  # Track which chunk this came from
+            
             extracted_all.extend(reqs)
             per_chunk_extracted.append(reqs)
+            
             if LOG_LLM:
                 RAW_DIR.mkdir(parents=True, exist_ok=True)
-                (RAW_DIR / f"extract_{pdf_path.stem}_g{idx:03d}.json").write_text(
+                (RAW_DIR / f"extract_{file_path.stem}_g{idx:03d}.json").write_text(
                     json.dumps(reqs, ensure_ascii=False, indent=2), encoding="utf-8"
                 )
-            log.info("[EXTRACT] %s gchunk %d -> %d reqs in %.2fs",
-                     pdf_path.name, idx, len(reqs), te1 - te0)
+            
+            log.info(f"[EXTRACT] {file_path.name} chunk {idx} -> {len(reqs)} reqs in {te1 - te0:.2f}s")
 
         # ---------- Batch classify across ALL extracted ----------
         classified_all: List[Dict[str, Any]] = []
@@ -288,21 +304,23 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
             batch = extracted_all[start:start+batch_size]
             if not batch:
                 continue
+            
             tc0 = time.perf_counter()
-            cls_batch = batch_classifier(batch)  # returns list[dict] same length
+            cls_batch = batch_classifier(batch)
             tc1 = time.perf_counter()
+            
             if LOG_LLM:
-                (RAW_DIR / f"classify_{pdf_path.stem}_{start:05d}.json").write_text(
+                (RAW_DIR / f"classify_{file_path.stem}_{start:05d}.json").write_text(
                     json.dumps(cls_batch, ensure_ascii=False, indent=2), encoding="utf-8"
                 )
-            log.info("[CLASSIFY] %s items %d..%d -> %d in %.2fs",
-                     pdf_path.name, start+1, start+len(batch), len(cls_batch), tc1 - tc0)
+            
+            log.info(f"[CLASSIFY] {file_path.name} items {start+1}..{start+len(batch)} -> {len(cls_batch)} in {tc1 - tc0:.2f}s")
             classified_all.extend(cls_batch)
 
         # ---------- Batch ground per grouped chunk ----------
         grounded_all: List[Dict[str, Any]] = []
-        # regroup classified by grouped-index
         by_gidx: Dict[int, List[Dict[str, Any]]] = {}
+        
         for r in classified_all:
             gidx = int(r.get("_gidx", 0))
             by_gidx.setdefault(gidx, []).append(r)
@@ -311,33 +329,20 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
             cls_for_chunk = by_gidx.get(idx, [])
             if not cls_for_chunk:
                 continue
+            
             for start in range(0, len(cls_for_chunk), batch_size):
                 b = cls_for_chunk[start:start+batch_size]
                 tg0 = time.perf_counter()
-                grd_batch = batch_grounder(chunk, b)  # returns list[dict] same length
+                grd_batch = batch_grounder(chunk, b)
                 tg1 = time.perf_counter()
+                
                 if LOG_LLM:
-                    (RAW_DIR / f"ground_{pdf_path.stem}_g{idx:03d}_{start:05d}.json").write_text(
+                    (RAW_DIR / f"ground_{file_path.stem}_g{idx:03d}_{start:05d}.json").write_text(
                         json.dumps(grd_batch, ensure_ascii=False, indent=2), encoding="utf-8"
                     )
-                log.info("[GROUND] %s gchunk %d items %d..%d -> %d in %.2fs",
-                         pdf_path.name, idx+1, start+1, start+len(b), len(grd_batch), tg1 - tg0)
+                
+                log.info(f"[GROUND] {file_path.name} chunk {idx+1} items {start+1}..{start+len(b)} -> {len(grd_batch)} in {tg1 - tg0:.2f}s")
                 grounded_all.extend(grd_batch)
-
-        # ---------- Normalize & tag doc ----------
-        for r in grounded_all:
-            r.pop("_gidx", None)
-            r["doc_name"] = pdf_path.name
-            r.setdefault("category", r.get("category", "Other"))
-            r.setdefault("modality", r.get("modality", "UNKNOWN"))
-            r.setdefault("quote", r.get("quote", ""))
-            r.setdefault("section", r.get("section", ""))
-            r.setdefault("page_start", r.get("page_start", ""))
-            r.setdefault("page_end", r.get("page_end", ""))
-            r.setdefault("source", r.get("source", "llm"))
-
-        log.info("File %s done: extracted=%d classified=%d grounded=%d",
-                 pdf_path.name, len(extracted_all), len(classified_all), len(grounded_all))
 
         # ---------- Normalize, validate & tag doc ----------
         valid_reqs = []
@@ -348,14 +353,15 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
             r.pop("_gidx", None)
             r.pop("_idx", None)
             
-            # Handle schema mismatches (e.g., 'page' vs 'page_start')
+            # Handle schema mismatches
             if "page" in r and "page_start" not in r:
                 r["page_start"] = r.pop("page")
             if "page" in r and "page_end" not in r:
                 r["page_end"] = r.get("page")
-                
+            
             # Normalize to expected schema
-            r["doc_name"] = pdf_path.name
+            r["doc_name"] = file_path.name
+            r["doc_type"] = file_type[1:]  # .pdf -> pdf, .docx -> docx
             r.setdefault("category", r.get("category", "Other"))
             r.setdefault("modality", r.get("modality", "UNKNOWN"))
             r.setdefault("quote", r.get("quote", ""))
@@ -372,56 +378,99 @@ def run_dspy_pipeline(opportunity_id: str, input_pdfs: List[Path]) -> List[Dict[
             else:
                 skipped_count += 1
                 missing = [f for f in required_fields if not r.get(f)]
-                log.warning("SKIPPING invalid requirement (missing %s): %s", 
-                        missing,)
+                log.warning(f"SKIPPING invalid requirement (missing {missing})")
 
-        log.info("File %s done: extracted=%d classified=%d grounded=%d valid=%d skipped=%d",
-                pdf_path.name, len(extracted_all), len(classified_all), 
-                len(grounded_all), len(valid_reqs), skipped_count)
+        log.info(
+            f"File {file_path.name} done: extracted={len(extracted_all)} "
+            f"classified={len(classified_all)} grounded={len(grounded_all)} "
+            f"valid={len(valid_reqs)} skipped={skipped_count}"
+        )
 
         results.extend(valid_reqs)
+    
     return results
 
 # -------------------- Streamlit entry --------------------
 def process_opportunity(opportunity_id: str) -> str:
+    """
+    Process all documents (PDF, Word, Excel) for an opportunity.
+    
+    Supported formats:
+    - PDF: .pdf
+    - Word: .docx, .doc
+    - Excel: .xlsx, .xls
+    """
     inputs_root = Path("data/inputs")
     specific_dir = inputs_root / opportunity_id if opportunity_id else None
 
+    # Discover all supported file types
+    supported_extensions = ["*.pdf", "*.docx", "*.doc", "*.xlsx", "*.xls"]
+    all_files = []
+    
     if specific_dir and specific_dir.exists():
-        pdfs = sorted(specific_dir.glob("*.pdf"))
+        # Get files from opportunity-specific directory
+        for pattern in supported_extensions:
+            all_files.extend(specific_dir.glob(pattern))
     else:
-        pdfs = sorted(inputs_root.glob("*.pdf"))
+        # Get files from root inputs directory
+        for pattern in supported_extensions:
+            all_files.extend(inputs_root.glob(pattern))
+    
+    # Sort for consistent processing order
+    all_files = sorted(all_files)
 
-    if not pdfs:
+    if not all_files:
         raise FileNotFoundError(
-            f"No PDFs found for opportunity '{opportunity_id}'. "
-            f"Place files in data/inputs/{opportunity_id}/ or data/inputs/."
+            f"No supported files found for opportunity '{opportunity_id}'. "
+            f"Place files in data/inputs/{opportunity_id}/ or data/inputs/\n"
+            f"Supported formats: PDF (.pdf), Word (.docx, .doc), Excel (.xlsx, .xls)"
         )
 
-    log.info("Processing %d PDF(s) for %s", len(pdfs), opportunity_id or "[default inputs]")
+    # Log what we found (grouped by file type)
+    file_type_counts = {}
+    for f in all_files:
+        ext = f.suffix.lower()
+        file_type_counts[ext] = file_type_counts.get(ext, 0) + 1
+    
+    file_summary = ", ".join(f"{count} {ext}" for ext, count in sorted(file_type_counts.items()))
+    log.info(
+        "Processing %d file(s) for %s: %s",
+        len(all_files),
+        opportunity_id or "[default inputs]",
+        file_summary
+    )
 
-    combined_reqs = run_dspy_pipeline(opportunity_id, pdfs)
+    # Run extraction pipeline
+    combined_reqs = run_dspy_pipeline(opportunity_id, all_files)
 
-    # per-doc tmp
-    tmp_dir = Path("tmp_outputs"); tmp_dir.mkdir(parents=True, exist_ok=True)
-    for p in pdfs:
-        doc_items = [r for r in combined_reqs if r.get("doc_name") == p.name]
-        base = f"{p.stem}.{opportunity_id or 'default'}"
+    # Save per-document outputs to tmp_outputs/
+    tmp_dir = Path("tmp_outputs")
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    
+    for file_path in all_files:
+        doc_items = [r for r in combined_reqs if r.get("doc_name") == file_path.name]
+        base = f"{file_path.stem}.{opportunity_id or 'default'}"
+        
         _save_json(doc_items, tmp_dir / f"{base}.requirements.json")
-        _save_csv(doc_items,  tmp_dir / f"{base}.matrix.csv")
+        _save_csv(doc_items, tmp_dir / f"{base}.matrix.csv")
         save_excel(doc_items, tmp_dir / f"{base}.matrix.xlsx")
-        log.info("Saved tmp outputs for %s (%d rows)", p.name, len(doc_items))
+        
+        log.info("Saved tmp outputs for %s (%d rows)", file_path.name, len(doc_items))
 
-    # combined
-    out_dir = Path("outputs"); out_dir.mkdir(parents=True, exist_ok=True)
+    # Save combined outputs to outputs/
+    out_dir = Path("outputs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
     final_json = out_dir / f"{(opportunity_id or 'default')}.requirements.json"
-    final_csv  = out_dir / f"{(opportunity_id or 'default')}.matrix.csv"
+    final_csv = out_dir / f"{(opportunity_id or 'default')}.matrix.csv"
     final_xlsx = out_dir / f"{(opportunity_id or 'default')}.matrix.xlsx"
 
     _save_json(combined_reqs, final_json)
-    log.info(f"Saved {final_json} to /tmp_outputs/")
-    _save_csv(combined_reqs,  final_csv)
-    log.info(f"Saved {final_csv} to /tmp_outputs/")
+    log.info(f"Saved {final_json}")
+    
+    _save_csv(combined_reqs, final_csv)
+    log.info(f"Saved {final_csv}")
+    
     try:
         save_excel(combined_reqs, final_xlsx)
         log.info("Final combined XLSX: %s (%d rows)", final_xlsx, len(combined_reqs))
@@ -429,13 +478,22 @@ def process_opportunity(opportunity_id: str) -> str:
         log.error(f"Failed to save final XLSX: {e}")
         raise
 
-    # upload
+    # Upload to Azure Blob Storage
     conn_str = settings.azure_storage_connection_string
     container = settings.azure_blob_container
+    
     if not conn_str or not container:
-        raise RuntimeError("Set AZURE_STORAGE_CONNECTION_STRING and AZURE_BLOB_CONTAINER in .env file.")
+        raise RuntimeError(
+            "Set AZURE_STORAGE_CONNECTION_STRING and AZURE_BLOB_CONTAINER in .env file."
+        )
+    
     sas_url = _upload_blob_and_sas(final_xlsx, container, conn_str, sas_hours=1)
     log.info("Uploaded to blob & generated SAS URL.")
+    
+    # Log extraction statistics (shows standard vs Document Intelligence usage)
+    log.info("\n" + get_extraction_stats())
+    
     # Cleanup local files after successful upload
     _cleanup_outputs()
+    
     return sas_url

@@ -1,0 +1,17 @@
+[project]
+name = "fon-proposal-writer-frontend"
+version = "1.0.0"
+description = "Streamlit frontend for RFP compliance matrix generation"
+requires-python = ">=3.12"
+dependencies = [
+    # Streamlit and web dependencies
+    "streamlit>=1.50.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]

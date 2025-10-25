@@ -1,0 +1,42 @@
+[project]
+name = "fon-proposal-writer-backend"
+version = "1.0.0"
+description = "FastAPI backend for RFP compliance matrix generation"
+requires-python = ">=3.12"
+dependencies = [
+    # FastAPI and web server
+    "fastapi==0.120.0",
+    "uvicorn==0.38.0",
+    
+    # Prefect for workflow orchestration
+    "prefect>=3.0.0",
+    
+    # Core dependencies from original pyproject.toml
+    "dspy>=3,<4",
+    "openai>=1.99,<2",
+    "langfuse==3.3.2",
+    "openinference-instrumentation-dspy>=0.1.26",
+    "pydantic==2.11.7",
+    "pydantic-settings>=2.6,<3",
+    "pypdf==6.0.0",
+    "python-docx>=1.1.0",
+    "azure-storage-blob>=12,<13",
+    "azure-ai-documentintelligence>=1.0.0",
+    "pandas>=2.2",
+    "XlsxWriter>=3.2",
+    "PyYAML>=6.0",
+    "regex>=2024.11.6",
+    "tqdm",
+    "rapidfuzz>=3.14.0",
+    "openpyxl>=3.1.5",
+    
+    # Additional backend-specific dependencies
+    "python-dotenv==1.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
+]

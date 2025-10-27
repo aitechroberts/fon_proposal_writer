@@ -1,0 +1,8 @@
+[theme]
+primaryColor = "#00A3E0"          # Parker Tide cyan
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#EAF6FC"  # subtle cyan tint
+textColor = "#0A2E4D"               # Parker Tide navy
+font = "sans serif"
+
+

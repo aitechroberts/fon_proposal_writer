@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 import re
+import shutil
+from functools import wraps
 
 # External
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
@@ -17,6 +19,7 @@ import litellm
 import dspy
 
 # Modules
+from src.extraction.modules import Extractor, BatchClassifier, BatchGrounder
 from src.matrix.export_excel import save_excel
 from src.io.loaders import load_document
 from src.io.smart_loader import load_document_smart, get_extraction_stats
@@ -37,7 +40,6 @@ CLEAR_CACHE_ON_STARTUP = os.getenv("CLEAR_CACHE", "0") in ("1", "true", "TRUE", 
 
 if CLEAR_CACHE_ON_STARTUP:
     try:
-        import dspy
         if hasattr(dspy, 'cache'):
             dspy.cache.reset_memory_cache()
             if hasattr(dspy.cache, 'disk_cache'):
@@ -106,7 +108,6 @@ def _upload_blob_and_sas(local_path: Path, container: str, conn_str: str, sas_ho
 # -------------------- Cleanup helper --------------------
 def _cleanup_outputs() -> None:
     """Delete tmp_outputs and outputs directories after successful upload."""
-    import shutil
     
     dirs_to_clean = [Path("tmp_outputs"), Path("outputs")]
         # Allow disabling cleanup for debugging
@@ -126,7 +127,6 @@ def _init_dspy_direct() -> None:
     """
     Configure DSPy - patch litellm.completion FIRST before anything else.
     """
-    from functools import wraps
 
     # STEP 1: PATCH LITELLM FIRST (before any DSPy objects are created)
     _original_litellm_completion = litellm.completion
@@ -237,7 +237,6 @@ def run_dspy_pipeline(opportunity_id: str, input_files: List[Path]) -> List[Dict
     _init_dspy_direct()
 
     # Import AFTER configure so predictors bind correctly
-    from src.extraction.modules import Extractor, BatchClassifier, BatchGrounder
 
     extractor       = Extractor()
     batch_classifier = BatchClassifier()

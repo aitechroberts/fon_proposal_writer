@@ -1,0 +1,76 @@
+# prefect-automations.yaml
+# Prefect Automations for RFP Compliance Matrix Processing
+
+# Automation to trigger file processing after upload
+name: process-rfp-files
+description: "Trigger RFP compliance matrix extraction when files are uploaded"
+enabled: true
+
+trigger:
+  type: event
+  expect:
+    - "prefect.flow-run.Completed"
+  match_related:
+    prefect.resource.name: "file-upload-handler"
+  posture: Reactive
+  threshold: 1
+  within: 30
+
+actions:
+  - type: run-deployment
+    deployment_id: "{{ prefect.deployments.extract-compliance-requirements.id }}"
+    parameters:
+      job_id: "{{ event.resource.parameters.job_id }}"
+      opportunity_id: "{{ event.resource.parameters.opportunity_id }}"
+      custom_filename: "{{ event.resource.parameters.custom_filename }}"
+      use_highergov: "{{ event.resource.parameters.use_highergov }}"
+      blob_urls: "{{ event.resource.result.blob_urls }}"
+
+---
+# Automation to notify completion after processing
+name: notify-processing-complete
+description: "Send notification when RFP processing completes"
+enabled: true
+
+trigger:
+  type: event
+  expect:
+    - "prefect.flow-run.Completed"
+  match_related:
+    prefect.resource.name: "extract-compliance-requirements"
+  posture: Reactive
+  threshold: 1
+  within: 30
+
+actions:
+  - type: run-deployment
+    deployment_id: "{{ prefect.deployments.notification-handler.id }}"
+    parameters:
+      job_id: "{{ event.resource.parameters.job_id }}"
+      sas_url: "{{ event.resource.result.sas_url }}"
+      file_count: "{{ event.resource.result.file_count }}"
+      status: "completed"
+
+---
+# Automation to handle processing failures
+name: handle-processing-failure
+description: "Handle failures in RFP processing"
+enabled: true
+
+trigger:
+  type: event
+  expect:
+    - "prefect.flow-run.Failed"
+  match_related:
+    prefect.resource.name: "extract-compliance-requirements"
+  posture: Reactive
+  threshold: 1
+  within: 30
+
+actions:
+  - type: run-deployment
+    deployment_id: "{{ prefect.deployments.error-handler.id }}"
+    parameters:
+      job_id: "{{ event.resource.parameters.job_id }}"
+      error_message: "{{ event.resource.state.message }}"
+      status: "failed"

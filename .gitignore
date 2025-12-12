@@ -8,8 +8,10 @@ __pycache__/
 .idea/
 *.log
 .env
+*.env
 .env.*
 
+test-proposals/
 test-results/
 requirements_formatted.xlsx
 requirements_simple.xlsx

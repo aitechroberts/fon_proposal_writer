@@ -1,0 +1,26 @@
+
+============================================================
+Integration Test Complete!
+============================================================
+
+Outputs saved to: /home/jroberts/fon_proposal_writer/test-proposals
+  - writing_requirements.xlsx (41,637 bytes)
+  - test-proposal.txt (50,601 bytes)
+  - test-proposal.docx (52,718 bytes)
+
+Section Summary:
+  ✓ Technical Approach & Capability: 3,920 chars
+  ✓ Schedule & Milestones: 2,296 chars
+  ✓ Performance & Deliverables: 5,254 chars
+  ✓ Operations & Sustainment: 2,458 chars
+  ✓ Customer Service & Communications: 4,119 chars
+  ✓ Personnel & Qualifications: 5,713 chars
+  ✓ Training & Workforce Development: 2,575 chars
+  ✓ Management & Staffing: 3,633 chars
+  ✓ Quality Assurance: 3,398 chars
+  ✓ Security (Personnel & Facility): 9,826 chars
+  ✓ Risk Management & Oversight Authority: 1,885 chars
+  ✓ Flowdowns & Subcontracting: 3,486 chars
+
+Total content: 48,563 characters
+(fon_proposal_writer) jroberts@Jonathan-Alien:~/fon_proposal_writer$ 

@@ -33,6 +33,8 @@ async def submit_job(job_data: JobSubmission, background_tasks: BackgroundTasks)
         "custom_filename": job_data.custom_filename,
         "use_highergov": job_data.use_highergov,
         "blob_urls": job_data.blob_urls or [],
+        "generate_proposal": job_data.generate_proposal,
+        "use_two_stage_writer": job_data.use_two_stage_writer,
         "prefect_flow_run_id": None,
         "progress": 0.0,
         "message": "Job queued for processing"
@@ -100,14 +102,16 @@ async def get_job_results(job_id: str):
     job = jobs_db[job_id]
     
     if job["status"] == JobStatus.COMPLETED:
-        # Retrieve SAS URL from job metadata
-        sas_url = job.get("sas_url")
+        # Retrieve SAS URLs from job metadata
+        requirements_sas_url = job.get("requirements_sas_url")
+        proposal_sas_url = job.get("proposal_sas_url")
         file_count = job.get("file_count", 0)
         
         return JobResult(
             job_id=job_id,
             status=job["status"],
-            sas_url=sas_url,
+            requirements_sas_url=requirements_sas_url,
+            proposal_sas_url=proposal_sas_url,
             file_count=file_count,
             created_at=job["created_at"],
             completed_at=job.get("completed_at")
@@ -144,7 +148,9 @@ async def trigger_prefect_flow(job_id: str, job_data: JobSubmission):
             "opportunity_id": job_data.opportunity_id,
             "custom_filename": job_data.custom_filename,
             "use_highergov": job_data.use_highergov,
-            "blob_urls": job_data.blob_urls or []
+            "blob_urls": job_data.blob_urls or [],
+            "generate_proposal": job_data.generate_proposal,
+            "use_two_stage_writer": job_data.use_two_stage_writer
         }
         
         # Run Prefect deployment

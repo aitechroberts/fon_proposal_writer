@@ -139,14 +139,23 @@ def check_backend_health() -> bool:
         log.error(f"Backend health check failed: {e}")
         return False
 
-def submit_job(opportunity_id: str, custom_filename: str, use_highergov: bool, blob_urls: List[str] = None) -> Optional[str]:
+def submit_job(
+    opportunity_id: str,
+    custom_filename: str,
+    use_highergov: bool,
+    blob_urls: List[str] = None,
+    generate_proposal: bool = True,
+    use_two_stage_writer: bool = False
+) -> Optional[str]:
     """Submit a job to the backend API."""
     try:
         payload = {
             "opportunity_id": opportunity_id,
             "custom_filename": custom_filename,
             "use_highergov": use_highergov,
-            "blob_urls": blob_urls or []
+            "blob_urls": blob_urls or [],
+            "generate_proposal": generate_proposal,
+            "use_two_stage_writer": use_two_stage_writer
         }
         
         response = requests.post(f"{API_BASE}/jobs/submit", json=payload, timeout=30)
@@ -264,12 +273,29 @@ def main():
                 st.stop()
 
             # Output settings
-            st.subheader("Matrix File Name")
+            st.subheader("Output Settings")
             custom_filename = st.text_input(
                 "Custom filename (optional):",
                 placeholder="my-proposal-compliance-matrix",
-                help="Custom name for the output Excel file",
+                help="Custom name for the output files",
             )
+            
+            # Proposal generation options
+            st.markdown("---")
+            st.subheader("Proposal Generation")
+            generate_proposal = st.checkbox(
+                "Generate proposal document",
+                value=True,
+                help="Automatically generate a Word proposal document from extracted requirements"
+            )
+            
+            use_two_stage_writer = False
+            if generate_proposal:
+                use_two_stage_writer = st.checkbox(
+                    "Use enhanced two-stage writer (higher quality, slower)",
+                    value=False,
+                    help="Uses a two-stage DSPy pipeline: theme analysis then drafting. Produces higher quality output but takes longer."
+                )
 
         # Card 2: Provide documents
         with st.container(border=True):
@@ -336,7 +362,14 @@ def main():
 
                     # Submit job
                     with st.spinner("Submitting job..."):
-                        job_id = submit_job(opportunity_id, custom_filename, use_highergov, blob_urls)
+                        job_id = submit_job(
+                            opportunity_id,
+                            custom_filename,
+                            use_highergov,
+                            blob_urls,
+                            generate_proposal,
+                            use_two_stage_writer
+                        )
 
                     if job_id:
                         st.session_state.current_job_id = job_id
@@ -384,7 +417,7 @@ def main():
             # Results display
             if status == "completed":
                 results = get_job_results(job_id)
-                if results and results.get("sas_url"):
+                if results:
                     st.success("🎉 Processing completed successfully!")
                     
                     col1, col2 = st.columns(2)
@@ -393,16 +426,40 @@ def main():
                     with col2:
                         st.metric("Job ID", job_id[:8])
                     
-                    # Download button
-                    st.markdown(f"""
-                    <a href="{results['sas_url']}" target="_blank" style="text-decoration: none;">
-                        <button style="background: linear-gradient(90deg, #4caf50 0%, #45a049 100%); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; font-size: 1.1rem; cursor: pointer; width: 100%;">
-                            📥 Download Compliance Matrix
-                        </button>
-                    </a>
-                    """, unsafe_allow_html=True)
+                    # Download buttons
+                    st.markdown("### 📥 Download Results")
+                    
+                    download_col1, download_col2 = st.columns(2)
+                    
+                    # Requirements matrix download
+                    requirements_url = results.get("requirements_sas_url")
+                    if requirements_url:
+                        with download_col1:
+                            st.markdown(f"""
+                            <a href="{requirements_url}" target="_blank" style="text-decoration: none;">
+                                <button style="background: linear-gradient(90deg, #4caf50 0%, #45a049 100%); color: white; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%;">
+                                    📊 Compliance Matrix (Excel)
+                                </button>
+                            </a>
+                            """, unsafe_allow_html=True)
+                    
+                    # Proposal document download
+                    proposal_url = results.get("proposal_sas_url")
+                    if proposal_url:
+                        with download_col2:
+                            st.markdown(f"""
+                            <a href="{proposal_url}" target="_blank" style="text-decoration: none;">
+                                <button style="background: linear-gradient(90deg, #2196f3 0%, #1976d2 100%); color: white; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%;">
+                                    📝 Proposal Document (Word)
+                                </button>
+                            </a>
+                            """, unsafe_allow_html=True)
+                    elif not proposal_url and results.get("requirements_sas_url"):
+                        with download_col2:
+                            st.info("Proposal generation was not requested or failed")
                     
                     # Clear current job
+                    st.markdown("---")
                     if st.button("🔄 Process New Job"):
                         del st.session_state.current_job_id
                         st.rerun()

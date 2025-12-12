@@ -6,7 +6,12 @@ from prefect import flow, get_run_logger
 from prefect.deployments import Deployment
 from prefect.server.schemas.schedules import CronSchedule
 
-from .tasks import download_files_task, run_dspy_pipeline_task, generate_and_upload_task
+from .tasks import (
+    download_files_task,
+    run_dspy_pipeline_task,
+    generate_and_upload_task,
+    generate_proposal_task,
+)
 
 @flow(name="extract-compliance-requirements")
 def extraction_flow(
@@ -14,10 +19,13 @@ def extraction_flow(
     opportunity_id: str,
     custom_filename: str = None,
     use_highergov: bool = False,
-    blob_urls: List[str] = None
+    blob_urls: List[str] = None,
+    generate_proposal: bool = True,
+    use_two_stage_writer: bool = False
 ) -> Dict[str, Any]:
     """
-    Main Prefect flow for extracting compliance requirements from RFP documents.
+    Main Prefect flow for extracting compliance requirements from RFP documents
+    and generating a proposal document.
     
     Args:
         job_id: Unique job identifier
@@ -25,9 +33,11 @@ def extraction_flow(
         custom_filename: Custom output filename (optional)
         use_highergov: Whether to use HigherGov integration
         blob_urls: List of Azure Blob URLs for uploaded files
+        generate_proposal: Whether to generate proposal document (default: True)
+        use_two_stage_writer: Use two-stage DSPy writer for higher quality (default: False)
     
     Returns:
-        Dictionary with job results including SAS URL and file count
+        Dictionary with job results including both requirements and proposal SAS URLs
     """
     logger = get_run_logger()
     logger.info(f"Starting extraction flow for job {job_id}, opportunity {opportunity_id}")
@@ -48,8 +58,8 @@ def extraction_flow(
         
         logger.info(f"Downloaded {len(downloaded_files)} files for processing")
         
-        # Step 2: Run DSPy processing pipeline
-        logger.info("Step 2: Running DSPy processing pipeline")
+        # Step 2: Run DSPy processing pipeline (requirements extraction)
+        logger.info("Step 2: Running DSPy requirements extraction pipeline")
         requirements = run_dspy_pipeline_task(opportunity_id, downloaded_files)
         
         if not requirements:
@@ -57,28 +67,47 @@ def extraction_flow(
             return {
                 "job_id": job_id,
                 "status": "completed",
-                "sas_url": "",
+                "requirements_sas_url": "",
+                "proposal_sas_url": "",
                 "file_count": 0,
                 "message": "No requirements found in documents"
             }
         
         logger.info(f"Extracted {len(requirements)} requirements")
         
-        # Step 3: Generate outputs and upload to Azure Blob
-        logger.info("Step 3: Generating outputs and uploading to Azure Blob")
-        sas_url = generate_and_upload_task(
+        # Step 3: Generate requirements outputs and upload to Azure Blob
+        logger.info("Step 3: Generating requirements matrix and uploading to Azure Blob")
+        requirements_sas_url = generate_and_upload_task(
             requirements, 
             job_id, 
             opportunity_id, 
             custom_filename
         )
         
+        # Step 4: Generate proposal document (chained pipeline)
+        proposal_sas_url = ""
+        if generate_proposal:
+            logger.info("Step 4: Generating proposal document")
+            try:
+                proposal_sas_url = generate_proposal_task(
+                    requirements=requirements,
+                    job_id=job_id,
+                    opportunity_id=opportunity_id,
+                    custom_filename=custom_filename,
+                    use_two_stage=use_two_stage_writer
+                )
+                logger.info(f"Proposal document generated successfully")
+            except Exception as e:
+                logger.error(f"Proposal generation failed (non-fatal): {e}")
+                # Continue - requirements extraction succeeded even if proposal failed
+        
         logger.info(f"Flow completed successfully for job {job_id}")
         
         return {
             "job_id": job_id,
             "status": "completed",
-            "sas_url": sas_url,
+            "requirements_sas_url": requirements_sas_url,
+            "proposal_sas_url": proposal_sas_url,
             "file_count": len(requirements),
             "message": "Processing completed successfully"
         }
@@ -114,9 +143,11 @@ if __name__ == "__main__":
             "opportunity_id": "default-opportunity", 
             "custom_filename": None,
             "use_highergov": False,
-            "blob_urls": []
+            "blob_urls": [],
+            "generate_proposal": True,
+            "use_two_stage_writer": False
         },
-        tags=["rfp-processing", "compliance-matrix", "dspy"]
+        tags=["rfp-processing", "compliance-matrix", "proposal-writing", "dspy"]
     )
     
     # Apply deployment to Prefect Cloud

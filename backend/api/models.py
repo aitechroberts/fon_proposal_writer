@@ -15,6 +15,8 @@ class JobSubmission(BaseModel):
     custom_filename: Optional[str] = Field(None, description="Custom output filename")
     use_highergov: bool = Field(False, description="Whether to use HigherGov integration")
     blob_urls: Optional[List[str]] = Field(None, description="Azure Blob URLs for uploaded files")
+    generate_proposal: bool = Field(True, description="Whether to generate proposal document")
+    use_two_stage_writer: bool = Field(False, description="Use two-stage DSPy writer for higher quality")
 
 class JobStatusResponse(BaseModel):
     job_id: str
@@ -28,7 +30,8 @@ class JobStatusResponse(BaseModel):
 class JobResult(BaseModel):
     job_id: str
     status: JobStatus
-    sas_url: Optional[str] = Field(None, description="SAS URL for downloading results")
+    requirements_sas_url: Optional[str] = Field(None, description="SAS URL for downloading requirements matrix (Excel)")
+    proposal_sas_url: Optional[str] = Field(None, description="SAS URL for downloading proposal document (Word)")
     file_count: Optional[int] = Field(None, description="Number of requirements extracted")
     error_message: Optional[str] = Field(None, description="Error message if failed")
     created_at: datetime

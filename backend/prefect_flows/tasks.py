@@ -163,3 +163,116 @@ def generate_and_upload_task(
         log.warning(f"Failed to cleanup local files: {e}")
     
     return sas_url
+
+
+@task(name="generate-proposal-document")
+def generate_proposal_task(
+    requirements: List[Dict[str, Any]],
+    job_id: str,
+    opportunity_id: str,
+    custom_filename: str = None,
+    use_two_stage: bool = False
+) -> str:
+    """
+    Generate proposal document from extracted requirements.
+    
+    Args:
+        requirements: List of extracted requirement dicts
+        job_id: Unique job identifier
+        opportunity_id: Opportunity ID for naming
+        custom_filename: Custom output filename (optional)
+        use_two_stage: Whether to use two-stage DSPy writer (default: single-pass)
+        
+    Returns:
+        SAS URL for downloading the generated Word document
+    """
+    if not requirements:
+        log.warning(f"No requirements for proposal generation in job {job_id}")
+        return ""
+    
+    # Import proposal generation modules
+    import sys
+    sys.path.append("/app/src")
+    
+    from src.proposal.modules import run_proposal_pipeline
+    from src.proposal.export_word import export_proposal_to_word, sections_to_text
+    
+    log.info(f"Starting proposal generation for {len(requirements)} requirements")
+    
+    try:
+        # Step 1: Run the proposal writing pipeline
+        sections = run_proposal_pipeline(requirements, use_two_stage=use_two_stage)
+        log.info(f"Generated {len(sections)} proposal sections")
+        
+        # Create output directory
+        output_dir = Path("outputs")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate filename
+        import re
+        file_base_name = custom_filename or opportunity_id or job_id
+        file_base_name = re.sub(r'[^\w\s-]', '', file_base_name).strip()
+        file_base_name = re.sub(r'[-\s]+', '-', file_base_name)
+        
+        # Step 2: Save as text (intermediate)
+        text_path = output_dir / f"{file_base_name}.proposal.txt"
+        text_content = sections_to_text(sections)
+        text_path.write_text(text_content, encoding="utf-8")
+        log.info(f"Saved intermediate text: {text_path}")
+        
+        # Step 3: Export to Word document
+        docx_path = output_dir / f"{file_base_name}.proposal.docx"
+        export_proposal_to_word(
+            sections=sections,
+            path=docx_path,
+            title=f"Technical Proposal - {opportunity_id or 'Response'}"
+        )
+        log.info(f"Generated Word document: {docx_path}")
+        
+        # Step 4: Upload to Azure Blob Storage
+        blob_service = BlobServiceClient.from_connection_string(
+            settings.azure_storage_connection_string
+        )
+        
+        blob_client = blob_service.get_blob_client(
+            container=settings.azure_blob_container,
+            blob=docx_path.name
+        )
+        
+        with open(docx_path, "rb") as f:
+            blob_client.upload_blob(f, overwrite=True)
+        
+        # Generate SAS URL for download
+        parts = {kv.split("=", 1)[0]: kv.split("=", 1)[1] for kv in settings.azure_storage_connection_string.split(";") if "=" in kv}
+        account_name = parts.get("AccountName")
+        account_key = parts.get("AccountKey")
+        
+        if not account_name or not account_key:
+            raise RuntimeError("AZURE_STORAGE_CONNECTION_STRING missing AccountName/AccountKey.")
+        
+        sas = generate_blob_sas(
+            account_name=account_name,
+            container_name=settings.azure_blob_container,
+            blob_name=docx_path.name,
+            account_key=account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.utcnow() + timedelta(hours=24),  # 24 hour expiry
+        )
+        
+        sas_url = f"https://{account_name}.blob.core.windows.net/{settings.azure_blob_container}/{docx_path.name}?{sas}"
+        
+        log.info(f"Uploaded proposal for job {job_id}: {sas_url}")
+        
+        # Cleanup local files
+        try:
+            text_path.unlink(missing_ok=True)
+            docx_path.unlink(missing_ok=True)
+            log.info("Cleaned up local proposal files")
+        except Exception as e:
+            log.warning(f"Failed to cleanup proposal files: {e}")
+        
+        return sas_url
+        
+    except Exception as e:
+        log.error(f"Proposal generation failed for job {job_id}: {e}")
+        raise

@@ -161,7 +161,8 @@ def _init_dspy_direct() -> None:
     lm = dspy.LM(
         model=azure_model,
         api_key=settings.azure_api_key,
-        api_base=f"{base}/openai/v1/",
+        api_base=base,
+        api_version=settings.azure_api_version,
         temperature=0.0,
         max_tokens=32000,  # Won't matter, patch will force it anyway
     )

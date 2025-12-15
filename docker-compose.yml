@@ -4,8 +4,8 @@ version: '3.8'
 services:
   backend:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -42,7 +42,30 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # Next.js Frontend (New - Primary)
   frontend:
+    build:
+      context: ./frontend-next
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_BACKEND_API_URL=http://backend:8000
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_API_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Streamlit Frontend (Legacy - for reference)
+  frontend-streamlit:
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -61,6 +84,8 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    profiles:
+      - streamlit  # Only run with: docker compose --profile streamlit up
 
 networks:
   default:

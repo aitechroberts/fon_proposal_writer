@@ -137,7 +137,7 @@ def check_backend_health() -> bool:
     print(f"[DEBUG H6] Checking backend health at: {API_BASE}/health", file=sys.stderr, flush=True)
     # #endregion
     try:
-        response = requests.get(f"{API_BASE}/health", timeout=5)
+        response = requests.get(f"{API_BASE}/health", timeout=35)
         # #region agent log H6
         print(f"[DEBUG H6] Health response: status={response.status_code}, body={response.text[:200] if response.text else 'empty'}", file=sys.stderr, flush=True)
         # #endregion

@@ -1,0 +1,101 @@
+@import '@mantine/core/styles.css';
+@import '@mantine/dropzone/styles.css';
+@import '@mantine/notifications/styles.css';
+
+:root {
+  --brand-navy: #04395E;
+  --brand-navy-600: #0A2E4D;
+  --brand-cyan: #00A3E0;
+  --brand-cyan-100: #E6F6FD;
+  --brand-gradient: linear-gradient(90deg, #04395E 0%, #0A2E4D 55%, #00A3E0 100%);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background: #f8fafc;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brand-cyan);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-navy);
+}
+
+/* Gradient header background */
+.gradient-header {
+  background: var(--brand-gradient);
+}
+
+/* Card hover effects */
+.hover-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(4, 57, 94, 0.12);
+}
+
+/* Status indicators */
+.status-queued {
+  border-left: 4px solid #2196f3;
+  background: #e3f2fd;
+}
+
+.status-running {
+  border-left: 4px solid #ff9800;
+  background: #fff3e0;
+}
+
+.status-completed {
+  border-left: 4px solid #4caf50;
+  background: #e8f5e8;
+}
+
+.status-failed {
+  border-left: 4px solid #f44336;
+  background: #ffebee;
+}
+
+/* Smooth animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Upload dropzone styling */
+.dropzone-active {
+  border-color: var(--brand-cyan) !important;
+  background: var(--brand-cyan-100) !important;
+}
+

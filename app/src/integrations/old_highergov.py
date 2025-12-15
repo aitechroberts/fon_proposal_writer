@@ -143,6 +143,8 @@ def fetch_opportunity_record(user_key: str,
     key = (user_key or "").strip()
     if not key:
         raise HigherGovError("Empty opportunity key")
+    
+    OPPORTUNITY_EP = f"{BASE}{API_PREFIX}/opportunity/"
 
     base = {
         "api_key": API_KEY,

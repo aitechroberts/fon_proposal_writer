@@ -9,10 +9,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Prefect Configuration
-      - PREFECT_API_URL=${PREFECT_API_URL:-https://api.prefect.cloud/api/accounts}
-      - PREFECT_API_KEY=${PREFECT_API_KEY}
-      
       # Azure Configuration
       - AZURE_API_KEY=${AZURE_API_KEY}
       - AZURE_API_BASE=${AZURE_API_BASE}
@@ -37,9 +33,7 @@ services:
       - DEBUG=${DEBUG:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
-      - ./backend:/app
       - ./shared:/shared
-      - ./app/src:/app/src
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s

@@ -1,5 +1,6 @@
 # frontend/Dockerfile
-FROM python:3.12-slim
+# Build from frontend dir: docker build -f frontend/Dockerfile ./frontend
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -9,12 +10,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install uv
-RUN pip install uv
+# Copy dependency files first (better caching)
+COPY pyproject.toml ./
+COPY uv.lock* ./
 
-# Copy pyproject.toml and install dependencies
-COPY pyproject.toml .
-RUN uv pip install --system -e .
+# Install dependencies with caching
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev || uv sync --no-dev --no-cache
+
+# Set up venv in PATH
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:${PATH}"
+ENV PYTHONPATH="/app"
 
 # Copy application code
 COPY . .
@@ -36,7 +43,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
 # Run Streamlit
-CMD ["streamlit", "run", "app.py", \
+CMD ["uv", "run", "streamlit", "run", "app.py", \
      "--server.port=8501", \
      "--server.address=0.0.0.0", \
      "--server.headless=true"]

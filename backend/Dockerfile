@@ -1,5 +1,6 @@
 # backend/Dockerfile
-FROM python:3.12-slim
+# Build from backend directory: docker build -t proposal-backend ./backend
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,20 +8,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
 && rm -rf /var/lib/apt/lists/*
 
+# Install dependencies to /opt/venv (outside /app to avoid volume mount conflicts)
+WORKDIR /opt
+COPY pyproject.toml ./
+COPY uv.lock* ./
+
+# Install dependencies with caching
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev || uv sync --no-dev --no-cache
+
+# Set up venv in PATH (installed to /opt/.venv by uv)
+ENV VIRTUAL_ENV=/opt/.venv
+ENV PATH="/opt/.venv/bin:${PATH}"
+
 WORKDIR /app
+ENV PYTHONPATH="/app:/app/src"
 
-# Install uv
-RUN pip install uv
-
-# Copy pyproject.toml and install dependencies
-COPY pyproject.toml .
-RUN uv pip install --system -e .
-
-# Copy application code
+# Copy all application code
 COPY . .
-
-# Add shared config to Python path
-ENV PYTHONPATH="/app:/shared:/app/src:${PYTHONPATH}"
 
 # Create necessary directories
 RUN mkdir -p data/inputs tmp_outputs outputs logs

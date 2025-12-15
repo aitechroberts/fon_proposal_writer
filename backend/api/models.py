@@ -25,13 +25,13 @@ class JobStatusResponse(BaseModel):
     updated_at: datetime
     progress: Optional[float] = Field(None, description="Progress percentage (0-100)")
     message: Optional[str] = Field(None, description="Status message")
-    prefect_flow_run_id: Optional[str] = Field(None, description="Prefect flow run ID")
 
 class JobResult(BaseModel):
     job_id: str
     status: JobStatus
     requirements_sas_url: Optional[str] = Field(None, description="SAS URL for downloading requirements matrix (Excel)")
     proposal_sas_url: Optional[str] = Field(None, description="SAS URL for downloading proposal document (Word)")
+    zip_sas_url: Optional[str] = Field(None, description="SAS URL for downloading all outputs as a ZIP")
     file_count: Optional[int] = Field(None, description="Number of requirements extracted")
     error_message: Optional[str] = Field(None, description="Error message if failed")
     created_at: datetime

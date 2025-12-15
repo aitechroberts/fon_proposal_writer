@@ -132,10 +132,20 @@ st.set_page_config(
 
 def check_backend_health() -> bool:
     """Check if backend API is available."""
+    # #region agent log H6
+    import sys
+    print(f"[DEBUG H6] Checking backend health at: {API_BASE}/health", file=sys.stderr, flush=True)
+    # #endregion
     try:
         response = requests.get(f"{API_BASE}/health", timeout=5)
+        # #region agent log H6
+        print(f"[DEBUG H6] Health response: status={response.status_code}, body={response.text[:200] if response.text else 'empty'}", file=sys.stderr, flush=True)
+        # #endregion
         return response.status_code == 200
     except Exception as e:
+        # #region agent log H6
+        print(f"[DEBUG H6] Health check ERROR: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        # #endregion
         log.error(f"Backend health check failed: {e}")
         return False
 
@@ -189,10 +199,30 @@ def get_job_results(job_id: str) -> Optional[dict]:
         log.error(f"Failed to get job results: {e}")
         return None
 
-def upload_files_to_blob(files: List[bytes], filenames: List[str]) -> List[str]:
-    """Upload files to Azure Blob Storage and return URLs."""
-    # For now, return mock URLs - in production, implement actual blob upload
-    return [f"https://mock-blob-url.com/{filename}" for filename in filenames]
+def upload_files_to_backend(uploaded_files) -> List[str]:
+    """Upload files to backend API which stores them in Azure Blob Storage."""
+    try:
+        # Prepare multipart files for upload
+        files_to_upload = []
+        for f in uploaded_files:
+            files_to_upload.append(
+                ("files", (f.name, f.getvalue(), "application/octet-stream"))
+            )
+        
+        response = requests.post(
+            f"{API_BASE}/files/upload",
+            files=files_to_upload,
+            timeout=120  # 2 minute timeout for large files
+        )
+        response.raise_for_status()
+        
+        result = response.json()
+        return result.get("blob_urls", [])
+        
+    except Exception as e:
+        log.error(f"Failed to upload files: {e}")
+        st.error(f"Failed to upload files: {str(e)}")
+        return []
 
 # Main UI
 def main():
@@ -303,7 +333,7 @@ def main():
 
             opportunity_id = None
             uploaded_files = []
-            blob_urls = []
+            blob_urls = st.session_state.get("blob_urls", [])
 
             if use_highergov:
                 st.subheader("HigherGov Integration")
@@ -333,12 +363,20 @@ def main():
                             file_size_mb = len(file.getvalue()) / (1024 * 1024)
                             st.write(f"• {file.name} ({file_size_mb:.2f} MB)")
 
-                    # Upload to blob storage (mock implementation)
+                    # Upload to blob storage via backend
                     if st.button("📤 Upload to Cloud Storage"):
-                        with st.spinner("Uploading files..."):
-                            filenames = [f.name for f in uploaded_files]
-                            blob_urls = upload_files_to_blob([f.getvalue() for f in uploaded_files], filenames)
-                            st.success("✓ Files uploaded successfully")
+                        with st.spinner("Uploading files to cloud storage..."):
+                            blob_urls = upload_files_to_backend(uploaded_files)
+                            if blob_urls:
+                                st.session_state.blob_urls = blob_urls
+                                st.success(f"✓ {len(blob_urls)} file(s) uploaded successfully")
+                            else:
+                                st.error("Failed to upload files")
+                    
+                    # Show uploaded status
+                    if "blob_urls" in st.session_state and st.session_state.blob_urls:
+                        blob_urls = st.session_state.blob_urls
+                        st.info(f"✓ {len(blob_urls)} file(s) ready for processing")
     
     with col2:
         with st.container(border=True):
@@ -349,10 +387,14 @@ def main():
             if use_highergov:
                 can_process = bool(opportunity_id and opportunity_id.strip())
             else:
-                can_process = bool(uploaded_files or blob_urls)
+                # Must have uploaded files to blob storage (not just selected files)
+                can_process = bool(blob_urls)
 
             if not can_process:
-                st.info("👆 Please provide documents to process")
+                if uploaded_files and not blob_urls:
+                    st.warning("👆 Click 'Upload to Cloud Storage' first, then extract requirements")
+                else:
+                    st.info("👆 Please provide documents to process")
             else:
                 # Process button
                 if st.button("🚀 Extract Requirements", type="primary", disabled=not can_process):
@@ -428,6 +470,17 @@ def main():
                     
                     # Download buttons
                     st.markdown("### 📥 Download Results")
+
+                    # ZIP download (all outputs)
+                    zip_url = results.get("zip_sas_url")
+                    if zip_url:
+                        st.markdown(f"""
+                        <a href="{zip_url}" target="_blank" style="text-decoration: none;">
+                            <button style="background: linear-gradient(90deg, #7b1fa2 0%, #6a1b9a 100%); color: white; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1rem; cursor: pointer; width: 100%; margin-bottom: 0.5rem;">
+                                📦 Download All (ZIP)
+                            </button>
+                        </a>
+                        """, unsafe_allow_html=True)
                     
                     download_col1, download_col2 = st.columns(2)
                     
@@ -462,6 +515,7 @@ def main():
                     st.markdown("---")
                     if st.button("🔄 Process New Job"):
                         del st.session_state.current_job_id
+                        st.session_state.pop("blob_urls", None)
                         st.rerun()
             
             elif status == "failed":
@@ -471,6 +525,7 @@ def main():
                 
                 if st.button("🔄 Try Again"):
                     del st.session_state.current_job_id
+                    st.session_state.pop("blob_urls", None)
                     st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)

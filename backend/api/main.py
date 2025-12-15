@@ -1,17 +1,52 @@
 # backend/api/main.py
 import logging
-import sys
+import json
 from pathlib import Path
+
+# #region agent log H1
+def _debug_log(hyp, loc, msg, data=None):
+    try:
+        p = Path("/root/fon_proposal_writer/.cursor/debug.log")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "a") as f:
+            f.write(json.dumps({"hypothesisId": hyp, "location": loc, "message": msg, "data": data or {}, "timestamp": __import__("time").time()}) + "\n")
+    except: pass
+_debug_log("H1", "api/main.py:top", "Module load started")
+# #endregion
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-# Add shared config to path
-sys.path.append("/shared")
-sys.path.append("/app/src")
+# #region agent log H1
+_debug_log("H1", "api/main.py:pre-import-routes", "About to import api.routes")
+# #endregion
 
-from api.routes import router
-from config import settings
+try:
+    from api.routes import router
+    # #region agent log H1
+    _debug_log("H1", "api/main.py:post-import-routes", "Successfully imported api.routes")
+    # #endregion
+except Exception as e:
+    # #region agent log H1
+    _debug_log("H1", "api/main.py:import-routes-error", f"Failed to import api.routes: {e}")
+    # #endregion
+    raise
+
+# #region agent log H3
+_debug_log("H3", "api/main.py:pre-import-config", "About to import config.settings")
+# #endregion
+
+try:
+    from config import settings
+    # #region agent log H3
+    _debug_log("H3", "api/main.py:post-import-config", "Successfully imported config", {"blob_container": settings.azure_blob_container})
+    # #endregion
+except Exception as e:
+    # #region agent log H3
+    _debug_log("H3", "api/main.py:import-config-error", f"Failed to import config: {e}")
+    # #endregion
+    raise
 
 # Configure logging
 logging.basicConfig(
@@ -23,8 +58,10 @@ log = logging.getLogger("backend")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
+    # #region agent log H2
+    _debug_log("H2", "api/main.py:lifespan-start", "FastAPI lifespan startup triggered")
+    # #endregion
     log.info("Starting RFP Compliance Matrix Backend API")
-    log.info(f"Prefect API URL: {settings.prefect_api_url}")
     log.info(f"Azure Blob Container: {settings.azure_blob_container}")
     yield
     log.info("Shutting down RFP Compliance Matrix Backend API")

@@ -1,7 +1,6 @@
-# backend/config.py
+# src/config.py
 from pydantic import Field
 from pydantic_settings import BaseSettings
-
 
 class Settings(BaseSettings):
     """Application settings using pydantic-settings v2."""
@@ -12,7 +11,7 @@ class Settings(BaseSettings):
     azure_api_version: str = Field(default="2024-12-01-preview", alias="AZURE_API_VERSION")
     azure_openai_deployment: str = Field(default="gpt-4.1", alias="AZURE_OPENAI_DEPLOYMENT")
     
-    # Langfuse Configuration (observability)
+    # Langfuse Configuration
     langfuse_public_key: str = Field(default="", alias="LANGFUSE_PUBLIC_KEY")
     langfuse_secret_key: str = Field(default="", alias="LANGFUSE_SECRET_KEY")
     langfuse_host: str = Field(default="https://cloud.langfuse.com", alias="LANGFUSE_HOST")
@@ -28,12 +27,8 @@ class Settings(BaseSettings):
     # DSPy Configuration
     dspy_model_type: str = Field(default="chat", alias="DSPY_MODEL_TYPE")
     
-    # HigherGov Configuration
-    highergov_api_key: str = Field(default="", alias="HIGHERGOV_API_KEY")
-    
     # Application Settings
     debug: bool = Field(default=False, alias="DEBUG")
-    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
     model_config = {
         "env_file": ".env",
@@ -41,6 +36,5 @@ class Settings(BaseSettings):
         "case_sensitive": False,
         "extra": "ignore"
     }
-
 
 settings = Settings()

@@ -1,6 +1,6 @@
 # RFP Compliance Matrix Generator — Full Documentation
 
-> **Purpose**: Transform government RFP (Request for Proposal) documents into structured compliance matrices using AI-powered extraction with DSPy and Azure OpenAI.
+> **Purpose**: Transform government RFP (Request for Proposal) documents into structured compliance matrices and draft proposal documents using AI-powered extraction with DSPy and Azure OpenAI.
 
 ---
 
@@ -10,7 +10,7 @@
 2. [Architecture](#2-architecture)
 3. [Data Model](#3-data-model)
 4. [DSPy Pipeline](#4-dspy-pipeline)
-5. [Data Orchestration (Prefect)](#5-data-orchestration-prefect)
+5. [Proposal Writing Pipeline](#5-proposal-writing-pipeline)
 6. [API Reference](#6-api-reference)
 7. [Document Processing](#7-document-processing)
 8. [Integrations](#8-integrations)
@@ -31,7 +31,8 @@ The RFP Compliance Matrix Generator:
 2. **Extracts** compliance requirements using DSPy modules backed by Azure OpenAI
 3. **Classifies** each requirement into categories (Technical, Submission, Eligibility, etc.)
 4. **Grounds** requirements with exact quotes, page numbers, and section references
-5. **Exports** a structured Excel compliance matrix for proposal teams
+5. **Generates** a draft proposal document addressing extracted requirements
+6. **Exports** Excel compliance matrix + Word proposal document + ZIP bundle
 
 ### Key Technologies
 
@@ -39,7 +40,6 @@ The RFP Compliance Matrix Generator:
 |-------|------------|
 | Frontend | Streamlit (Python) |
 | Backend API | FastAPI |
-| Orchestration | Prefect Cloud (push work pools) |
 | AI Framework | DSPy with Azure OpenAI (GPT-4.1) |
 | Document Parsing | pypdf, python-docx, openpyxl, Azure Document Intelligence |
 | Storage | Azure Blob Storage |
@@ -54,17 +54,23 @@ The RFP Compliance Matrix Generator:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Streamlit     │    │   FastAPI       │    │   Prefect       │
-│   Frontend      │◄──►│   Backend       │◄──►│   Cloud         │
-│   (Port 8501)   │    │   (Port 8000)   │    │   (Push Pool)   │
+│   Streamlit     │    │   FastAPI       │    │   Azure Blob    │
+│   Frontend      │◄──►│   Backend       │◄──►│   Storage       │
+│   (Port 8501)   │    │   (Port 8000)   │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                     │                       │
-         ▼                     ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   File Upload   │    │   Job Queue     │    │   Azure Blob    │
-│   & Results     │    │   (In-Memory)   │    │   Storage       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │
+         ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐
+│   File Upload   │    │  DSPy Pipeline  │
+│   & Results     │    │  (Background)   │
+└─────────────────┘    └─────────────────┘
 ```
+
+**Key Design Decisions:**
+- **Direct Processing**: Backend runs DSPy pipeline as FastAPI background tasks
+- **No External Orchestration**: No Prefect work pools or deployments required
+- **Simple Deployment**: Two Azure Container Apps (frontend + backend)
+- **ZIP Output**: All outputs bundled into single downloadable archive
 
 ### Project Structure
 
@@ -78,27 +84,29 @@ fon_proposal_writer/
 ├── backend/                     # FastAPI REST API
 │   ├── api/
 │   │   ├── main.py             # FastAPI app entry point
-│   │   ├── routes.py           # API endpoint handlers
+│   │   ├── routes.py           # API endpoints + pipeline runner
 │   │   └── models.py           # Pydantic request/response schemas
 │   ├── prefect_flows/
-│   │   ├── extraction_flow.py  # Main Prefect flow definition
-│   │   └── tasks.py            # Prefect tasks (download, process, upload)
+│   │   ├── extraction_flow.py  # Flow definition (reference)
+│   │   └── tasks.py            # Task implementations
+│   ├── config.py               # Backend settings
 │   ├── Dockerfile
 │   └── pyproject.toml
 ├── shared/                      # Shared configuration
 │   └── config.py               # Pydantic Settings (env vars)
-├── app/                         # ⚠️ LEGACY — original monolithic app
+├── app/                         # Core DSPy modules
 │   ├── main.py                 # DSPy pipeline entry point
-│   └── src/                    # Core extraction modules (still in use)
-│       ├── extraction/         # DSPy modules and signatures
+│   └── src/                    # Core extraction modules
+│       ├── extraction/         # DSPy extraction modules
+│       ├── proposal/           # DSPy proposal writing modules
 │       ├── io/                 # Document loaders
 │       ├── matrix/             # Excel export
 │       ├── integrations/       # HigherGov API client
 │       └── config.py           # App-level settings
 ├── docker-compose.yml          # Local dev orchestration
-├── prefect-automations.yaml    # Prefect event triggers
 ├── ARCHITECTURE.md             # Architecture summary
-├── UI.md                       # UI guidelines
+├── EXECUTE_PLAN.md             # Deployment guide
+├── PROPOSAL_PIPELINE_PLAN.md   # Proposal pipeline details
 └── FULL_DOCS.md                # This file
 ```
 
@@ -106,17 +114,17 @@ fon_proposal_writer/
 
 1. **Job Submission**
    ```
-   User → Streamlit UI → POST /api/v1/jobs/submit → FastAPI → Prefect Cloud
+   User → Streamlit UI → POST /api/v1/jobs/submit → FastAPI background task
    ```
 
-2. **Processing**
+2. **Processing (in backend)**
    ```
-   Prefect Cloud → Download from Blob → DSPy Pipeline → Generate Excel → Upload to Blob
+   Download from Blob → DSPy Extraction → Generate Matrix → Generate Proposal → ZIP → Upload to Blob
    ```
 
 3. **Results Retrieval**
    ```
-   Frontend polls GET /api/v1/jobs/{id}/status → On completion → GET /api/v1/jobs/{id}/results → SAS URL
+   Frontend polls GET /api/v1/jobs/{id}/status → On completion → GET /api/v1/jobs/{id}/results → SAS URLs
    ```
 
 ---
@@ -129,18 +137,20 @@ fon_proposal_writer/
 
 ```python
 class JobSubmission(BaseModel):
-    opportunity_id: str           # HigherGov ID or user-defined identifier
-    custom_filename: str | None   # Output file name (optional)
-    use_highergov: bool = False   # Fetch docs from HigherGov API
-    blob_urls: list[str] | None   # Pre-uploaded Azure Blob URLs
+    opportunity_id: str                    # HigherGov ID or user-defined identifier
+    custom_filename: str | None = None     # Output file name (optional)
+    use_highergov: bool = False            # Fetch docs from HigherGov API
+    blob_urls: list[str] | None = None     # Pre-uploaded Azure Blob URLs
+    generate_proposal: bool = True         # Generate proposal document
+    use_two_stage_writer: bool = False     # Use higher-quality two-stage writer
 ```
 
 #### JobStatus (Enum)
 
 ```python
 class JobStatus(str, Enum):
-    QUEUED = "queued"       # Job submitted, waiting for worker
-    RUNNING = "running"     # Prefect flow executing
+    QUEUED = "queued"       # Job submitted, waiting
+    RUNNING = "running"     # Pipeline executing
     COMPLETED = "completed" # Success, results available
     FAILED = "failed"       # Error occurred
 ```
@@ -155,7 +165,6 @@ class JobStatusResponse(BaseModel):
     updated_at: datetime
     progress: float | None        # 0-100 percentage
     message: str | None           # Human-readable status
-    prefect_flow_run_id: str | None
 ```
 
 #### JobResult
@@ -164,9 +173,11 @@ class JobStatusResponse(BaseModel):
 class JobResult(BaseModel):
     job_id: str
     status: JobStatus
-    sas_url: str | None           # Azure Blob SAS URL for download
-    file_count: int | None        # Number of requirements extracted
-    error_message: str | None     # If failed
+    requirements_sas_url: str | None   # Excel matrix download
+    proposal_sas_url: str | None       # Word document download
+    zip_sas_url: str | None            # All outputs bundled
+    file_count: int | None             # Number of requirements extracted
+    error_message: str | None          # If failed
     created_at: datetime
     completed_at: datetime | None
 ```
@@ -250,25 +261,9 @@ class ExtractReqs(dspy.Signature):
     
     Output: JSON array of requirement objects with fields:
     - id, category, modality, quote, section, page_start, page_end, confidence
-    
-    Categories: Technical, AdminFormat, Submission, Eligibility, Other
-    Modality: SHALL, MUST, SHOULD, MAY, WILL, REQUIRED, PROHIBITED
     """
     chunk_text: str = InputField()
     requirements_json: str = OutputField(prefix="JSON:")
-```
-
-**Module Implementation**:
-
-```python
-class Extractor(dspy.Module):
-    def __init__(self, retries=2):
-        self.pred = dspy.Predict(ExtractReqs)
-        self.retries = retries
-    
-    def forward(self, chunk: dict) -> list[dict]:
-        out = self.pred(chunk_text=chunk["text"])
-        return json.loads(out.requirements_json)
 ```
 
 **Behavior**:
@@ -280,21 +275,6 @@ class Extractor(dspy.Module):
 
 **Purpose**: Normalize categories and modalities for all extracted requirements.
 
-**DSPy Signature** (`BatchClassifyReq`):
-
-```python
-class BatchClassifyReq(dspy.Signature):
-    """Classify requirements into predefined categories.
-    
-    Input: JSON array of requirement objects
-    Output: JSON array with corrected category/modality fields
-    
-    Categories: Submission, Eligibility & Set-Asides, Technical Approach, ...
-    """
-    reqs_json: str = InputField()
-    classified_json: str = OutputField()
-```
-
 **Batching Strategy**:
 - Groups requirements into batches (default: 20 per call)
 - Preserves `_idx` field for result alignment
@@ -303,22 +283,6 @@ class BatchClassifyReq(dspy.Signature):
 ### Stage 3: Grounding (`BatchGrounder`)
 
 **Purpose**: Validate and enrich requirements with exact evidence from source text.
-
-**DSPy Signature** (`BatchGroundReq`):
-
-```python
-class BatchGroundReq(dspy.Signature):
-    """Ground requirements with evidence from source chunk.
-    
-    For each requirement, verify and refine:
-    - Exact quote location
-    - Page numbers
-    - Section references
-    """
-    chunk_text: str = InputField()
-    reqs_json: str = InputField()
-    grounded_json: str = OutputField()
-```
 
 **Behavior**:
 - Processes requirements grouped by source chunk
@@ -329,10 +293,7 @@ class BatchGroundReq(dspy.Signature):
 
 ```python
 def _init_dspy_direct():
-    # 1. Patch litellm for consistent max_tokens
-    litellm.completion = _force_max_tokens_completion  # Always 32000
-    
-    # 2. Configure Azure OpenAI
+    # Configure Azure OpenAI
     azure_model = f"azure/{settings.azure_openai_deployment}"
     lm = dspy.LM(
         model=azure_model,
@@ -342,7 +303,7 @@ def _init_dspy_direct():
         max_tokens=32000,
     )
     
-    # 3. Set global DSPy config
+    # Set global DSPy config
     dspy.configure(
         lm=lm,
         adapter=dspy.JSONAdapter(),
@@ -351,130 +312,55 @@ def _init_dspy_direct():
     )
 ```
 
-### Environment Knobs
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MAX_CHUNKS` | 0 | Limit chunks processed (0 = all) |
-| `MAX_CHARS` | 12000 | Truncate long chunks |
-| `PAGES_PER_CHUNK` | 1 | Pages grouped per extraction call |
-| `BATCH_SIZE` | 20 | Requirements per classify/ground batch |
-| `LOG_LLM` | false | Dump raw LLM responses to disk |
-| `CLEAR_CACHE` | false | Clear DSPy cache on startup |
-
 ---
 
-## 5. Data Orchestration (Prefect)
+## 5. Proposal Writing Pipeline
 
-### Flow Definition
+### Overview
 
-**File**: `backend/prefect_flows/extraction_flow.py`
+After requirements extraction, the proposal pipeline generates a draft Word document organized into 4 parts with 12 categories.
 
-```python
-@flow(name="extract-compliance-requirements")
-def extraction_flow(
-    job_id: str,
-    opportunity_id: str,
-    custom_filename: str = None,
-    use_highergov: bool = False,
-    blob_urls: list[str] = None
-) -> dict:
-    """Main processing flow."""
-    
-    # Step 1: Download files
-    downloaded_files = download_files_task(blob_urls or [], job_id)
-    
-    # Step 2: Run DSPy pipeline
-    requirements = run_dspy_pipeline_task(opportunity_id, downloaded_files)
-    
-    # Step 3: Generate outputs and upload
-    sas_url = generate_and_upload_task(
-        requirements, job_id, opportunity_id, custom_filename
-    )
-    
-    return {"job_id": job_id, "sas_url": sas_url, "file_count": len(requirements)}
-```
-
-### Tasks
-
-#### `download_files_task`
-
-Downloads files from Azure Blob to local temp directory.
+### Proposal Structure
 
 ```python
-@task(name="download-files-from-blob")
-def download_files_task(blob_urls: list[str], job_id: str) -> list[Path]:
-    temp_dir = Path(tempfile.mkdtemp(prefix=f"job_{job_id}_"))
-    # ... download each blob to temp_dir
-    return downloaded_files
+PROPOSAL_SECTIONS = {
+    "Part 1: The Promise (BLUF)": [
+        "Technical Approach & Capability",
+        "Schedule & Milestones",
+    ],
+    "Part 2: The Solution (Customer Focus)": [
+        "Performance & Deliverables",
+        "Operations & Sustainment",
+        "Customer Service & Communications",
+    ],
+    "Part 3: The People (Low Risk)": [
+        "Personnel & Qualifications",
+        "Training & Workforce Development",
+        "Management & Staffing",
+    ],
+    "Part 4: The Safety Net (Compliance)": [
+        "Quality Assurance",
+        "Security (Personnel & Facility)",
+        "Risk Management & Oversight Authority",
+        "Flowdowns & Subcontracting",
+    ],
+}
 ```
 
-#### `run_dspy_pipeline_task`
+### Writer Approaches
 
-Executes the DSPy extraction pipeline.
+**Single-Pass (Default)**: Fast, generates each section in one LLM call.
 
-```python
-@task(name="run-dspy-pipeline")
-def run_dspy_pipeline_task(opportunity_id: str, input_files: list[Path]) -> list[dict]:
-    from main import run_dspy_pipeline
-    return run_dspy_pipeline(opportunity_id, input_files)
-```
+**Two-Stage (Optional)**: Higher quality, slower. First analyzes themes, then drafts content.
 
-#### `generate_and_upload_task`
+### Word Export
 
-Creates Excel/JSON/CSV outputs and uploads to Azure Blob.
-
-```python
-@task(name="generate-and-upload-outputs")
-def generate_and_upload_task(requirements, job_id, opportunity_id, custom_filename) -> str:
-    # Generate Excel file
-    save_excel(requirements, final_xlsx)
-    
-    # Upload to Azure Blob
-    blob_client.upload_blob(...)
-    
-    # Generate 24-hour SAS URL
-    sas_url = generate_blob_sas(...)
-    return sas_url
-```
-
-### Prefect Automations
-
-**File**: `prefect-automations.yaml`
-
-```yaml
-# Trigger on flow completion
-name: notify-processing-complete
-trigger:
-  type: event
-  expect: ["prefect.flow-run.Completed"]
-  match_related:
-    prefect.resource.name: "extract-compliance-requirements"
-actions:
-  - type: run-deployment
-    parameters:
-      job_id: "{{ event.resource.parameters.job_id }}"
-      sas_url: "{{ event.resource.result.sas_url }}"
-      status: "completed"
-
-# Handle failures
-name: handle-processing-failure
-trigger:
-  type: event
-  expect: ["prefect.flow-run.Failed"]
-actions:
-  - type: run-deployment
-    parameters:
-      job_id: "{{ event.resource.parameters.job_id }}"
-      error_message: "{{ event.resource.state.message }}"
-      status: "failed"
-```
-
-### Work Pool Configuration
-
-- **Type**: Prefect Push Work Pool (serverless)
-- **Compute**: Prefect Cloud managed (75 free CPU hours)
-- **GPU**: Not currently used (API calls to Azure OpenAI)
+Using `python-docx`:
+- Title page with document title
+- Part headings (Heading 1)
+- Section headings (Heading 2)
+- Content (Normal, 12pt Times New Roman)
+- Page breaks between parts
 
 ---
 
@@ -498,7 +384,9 @@ Submit a new extraction job.
   "opportunity_id": "RFQ1781397",
   "custom_filename": "my-compliance-matrix",
   "use_highergov": false,
-  "blob_urls": ["https://storage.blob.core.windows.net/..."]
+  "blob_urls": ["https://storage.blob.core.windows.net/..."],
+  "generate_proposal": true,
+  "use_two_stage_writer": false
 }
 ```
 
@@ -526,8 +414,7 @@ Poll job status.
   "created_at": "2025-12-10T14:30:00Z",
   "updated_at": "2025-12-10T14:31:00Z",
   "progress": 45.0,
-  "message": "Processing in progress...",
-  "prefect_flow_run_id": "abc123"
+  "message": "Generating proposal..."
 }
 ```
 
@@ -540,7 +427,9 @@ Retrieve completed job results.
 {
   "job_id": "550e8400-e29b-41d4-a716-446655440000",
   "status": "completed",
-  "sas_url": "https://storage.blob.core.windows.net/container/file.xlsx?sas=...",
+  "requirements_sas_url": "https://storage.blob.core.windows.net/.../matrix.xlsx?sas=...",
+  "proposal_sas_url": "https://storage.blob.core.windows.net/.../proposal.docx?sas=...",
+  "zip_sas_url": "https://storage.blob.core.windows.net/.../outputs.zip?sas=...",
   "file_count": 127,
   "created_at": "2025-12-10T14:30:00Z",
   "completed_at": "2025-12-10T14:35:00Z"
@@ -593,18 +482,6 @@ Documents are routed to Azure Document Intelligence if:
 1. **Poor extraction**: < 100 characters extracted (likely scanned)
 2. **Government form indicators**: Filename or content contains "DD Form", "SF Form", "GS", "OMB"
 
-### Page Chunking
-
-Documents are split into chunks for processing:
-
-```python
-def _group_pages_into_chunks(pages, pages_per_chunk=1):
-    """
-    Combine N pages into a single chunk for extraction.
-    Each chunk tracks: text, section, start_page, end_page
-    """
-```
-
 ---
 
 ## 8. Integrations
@@ -628,18 +505,13 @@ files = ingest_highergov_opportunity("RFQ1781397")
 - SAM.gov solicitation number (e.g., `RFQ1781397`)
 - Numeric notice ID
 
-**API Flow**:
-1. Resolve opportunity via `/api-external/opportunity/`
-2. Fetch document index via `document_path`
-3. Download files (URLs expire ~60 minutes)
-
 ### Azure Blob Storage
 
 **Purpose**: Store uploaded files and generated outputs.
 
 **Operations**:
 - Upload input files for processing
-- Store generated Excel/JSON/CSV outputs
+- Store generated Excel/JSON/CSV/Word outputs
 - Generate SAS URLs for secure download (24-hour expiry)
 
 ### Langfuse (Observability)
@@ -673,13 +545,6 @@ AZURE_OPENAI_DEPLOYMENT=gpt-4.1
 ```bash
 AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
 AZURE_BLOB_CONTAINER=proposal-container
-```
-
-#### Prefect Cloud (Required for distributed mode)
-
-```bash
-PREFECT_API_URL=https://api.prefect.cloud/api/accounts/{account}/{workspace}
-PREFECT_API_KEY=pnu_...
 ```
 
 #### HigherGov (Optional)
@@ -744,6 +609,7 @@ See `UI.md` for detailed UI patterns. Summary:
 - **Cards**: Use `st.container(border=True)` with `.card-header`
 - **Status indicators**: Color-coded (blue=queued, orange=running, green=completed, red=failed)
 - **Progress**: Real-time polling with `st.progress()`
+- **Downloads**: Three buttons (ZIP, Matrix, Proposal)
 
 ### Layout
 
@@ -769,21 +635,22 @@ docker compose up --build
 
 ### Production (Azure Container Apps)
 
-1. **Build and push images**
-2. **Configure environment variables** in Azure
-3. **Deploy frontend and backend** as separate containers
-4. **Set up Prefect Cloud** deployment and work pool
-5. **Configure custom domain** (optional)
+1. **Build and push images** to ACR
+2. **Deploy backend ACA** with env vars
+3. **Add secrets via Portal** (AZURE_API_KEY, AZURE_STORAGE_CONNECTION_STRING)
+4. **Deploy frontend ACA** pointing to backend URL
+5. **Smoke test** end-to-end
 
-### Prefect Cloud Setup
+See `EXECUTE_PLAN.md` for detailed commands.
 
-1. Create Prefect Cloud account
-2. Create push work pool (`prefect-serverless`)
-3. Deploy extraction flow:
-   ```bash
-   python -m backend.prefect_flows.extraction_flow
-   ```
-4. Configure automations from `prefect-automations.yaml`
+### Required Backend Secrets
+
+- `AZURE_API_KEY` - Azure OpenAI key
+- `AZURE_STORAGE_CONNECTION_STRING` - Blob storage connection
+
+### Required Frontend Env Vars
+
+- `BACKEND_API_URL` - Backend ACA URL
 
 ---
 
@@ -791,14 +658,14 @@ docker compose up --build
 
 ### ⚠️ `app/` Directory
 
-The `app/` directory contains the **original monolithic Streamlit app** before the decoupled architecture refactor.
+The `app/` directory contains the **original monolithic Streamlit app** plus core DSPy modules that are still in active use.
 
-**Status**: Preserved but not actively used in the new architecture.
+**Status**: Core modules (`app/src/`) are still used; `app/app.py` is preserved but not active.
 
 **Files**:
 - `app/app.py` — Original Streamlit UI (replaced by `frontend/app.py`)
-- `app/main.py` — DSPy pipeline entry point (still imported by Prefect tasks)
-- `app/src/` — Core extraction modules (still in active use)
+- `app/main.py` — DSPy pipeline entry point (still used by backend)
+- `app/src/` — Core extraction and proposal modules (actively used)
 
 **Migration Notes**:
 - The `app/src/` modules are mounted into the backend container
@@ -813,21 +680,35 @@ The `app/` directory contains the **original monolithic Streamlit app** before t
 |------|---------|
 | `frontend/app.py` | Streamlit UI |
 | `backend/api/main.py` | FastAPI entry point |
-| `backend/api/routes.py` | API endpoint handlers |
+| `backend/api/routes.py` | API endpoints + pipeline runner |
 | `backend/api/models.py` | Pydantic schemas |
-| `backend/prefect_flows/extraction_flow.py` | Prefect flow |
-| `backend/prefect_flows/tasks.py` | Prefect tasks |
+| `backend/prefect_flows/tasks.py` | Task implementations |
 | `shared/config.py` | Shared settings |
 | `app/main.py` | DSPy pipeline (core logic) |
-| `app/src/extraction/modules.py` | DSPy modules |
-| `app/src/extraction/signatures.py` | DSPy signatures |
+| `app/src/extraction/modules.py` | DSPy extraction modules |
+| `app/src/extraction/signatures.py` | DSPy extraction signatures |
+| `app/src/proposal/modules.py` | DSPy proposal modules |
+| `app/src/proposal/signatures.py` | DSPy proposal signatures |
+| `app/src/proposal/export_word.py` | Word document export |
 | `app/src/io/smart_loader.py` | Document loader |
 | `app/src/matrix/export_excel.py` | Excel export |
 | `app/src/integrations/highergov.py` | HigherGov client |
 | `docker-compose.yml` | Local orchestration |
-| `prefect-automations.yaml` | Prefect event triggers |
+
+---
+
+## Output Files
+
+Each completed job produces:
+
+| File | Description |
+|------|-------------|
+| `{name}.matrix.xlsx` | Compliance matrix (Excel) |
+| `{name}.matrix.csv` | Compliance matrix (CSV) |
+| `{name}.requirements.json` | Raw requirements (JSON) |
+| `{name}.proposal.docx` | Draft proposal (Word) |
+| `{name}.outputs.zip` | All outputs bundled |
 
 ---
 
 *Last updated: December 2025*
-

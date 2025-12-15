@@ -1,0 +1,15 @@
+dspy<4,>=3
+openai<2,>=1.99
+langfuse==3.3.2
+openinference-instrumentation-dspy>=0.1.26
+pydantic==2.11.7
+pydantic-settings<3,>=2.6
+pypdf==6.0.0
+python-docx>=1.1.0
+azure-storage-blob<13,>=12
+azure-ai-documentintelligence>=1.0.0
+pandas>=2.2
+XlsxWriter>=3.2
+PyYAML>=6.0
+regex>=2024.11.6
+tqdm

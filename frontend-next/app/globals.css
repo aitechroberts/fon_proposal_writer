@@ -3,11 +3,18 @@
 @import '@mantine/notifications/styles.css';
 
 :root {
+  /* Brand colors - slightly desaturated for modern tech feel */
   --brand-navy: #04395E;
   --brand-navy-600: #0A2E4D;
-  --brand-cyan: #00A3E0;
-  --brand-cyan-100: #E6F6FD;
-  --brand-gradient: linear-gradient(90deg, #04395E 0%, #0A2E4D 55%, #00A3E0 100%);
+  --brand-cyan: #0ea5e9;  /* More muted, Tailwind sky-500 */
+  --brand-cyan-100: #f0f9ff;
+  
+  /* Neutral palette */
+  --bg-primary: #f8fafc;
+  --bg-dots: #e2e8f0;
+  --border-subtle: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
 }
 
 * {
@@ -20,72 +27,74 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background: #f8fafc;
+  /* Modern dot pattern background - Novu/Linear style */
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(var(--bg-dots) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--brand-cyan);
-  border-radius: 4px;
+  background: var(--border-subtle);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-navy);
+  background: #cbd5e1;
 }
 
-/* Gradient header background */
-.gradient-header {
-  background: var(--brand-gradient);
+/* Global transitions */
+.transition-smooth {
+  transition: all 0.15s ease;
 }
 
-/* Card hover effects */
-.hover-card {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+/* Modern card hover - subtle lift */
+.hover-lift {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.hover-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(4, 57, 94, 0.12);
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* Status indicators */
+/* Status indicators - modernized with left accent */
 .status-queued {
-  border-left: 4px solid #2196f3;
-  background: #e3f2fd;
+  border-left: 3px solid #3b82f6;
+  background: #eff6ff;
 }
 
 .status-running {
-  border-left: 4px solid #ff9800;
-  background: #fff3e0;
+  border-left: 3px solid #f59e0b;
+  background: #fffbeb;
 }
 
 .status-completed {
-  border-left: 4px solid #4caf50;
-  background: #e8f5e8;
+  border-left: 3px solid #10b981;
+  background: #ecfdf5;
 }
 
 .status-failed {
-  border-left: 4px solid #f44336;
-  background: #ffebee;
+  border-left: 3px solid #ef4444;
+  background: #fef2f2;
 }
 
-/* Smooth animations */
+/* Smooth pulse animation */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.5;
   }
 }
 
@@ -93,9 +102,36 @@ body {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Upload dropzone styling */
-.dropzone-active {
-  border-color: var(--brand-cyan) !important;
-  background: var(--brand-cyan-100) !important;
+/* Skeleton shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-primary) 25%,
+    var(--border-subtle) 50%,
+    var(--bg-primary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Monospace text for technical data */
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  letter-spacing: -0.02em;
+}
+
+/* Focus ring for accessibility */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--brand-cyan);
+  outline-offset: 2px;
+}

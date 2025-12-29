@@ -6,7 +6,6 @@ import {
   Paper,
   Group,
   Badge,
-  ThemeIcon,
   Box,
   ScrollArea,
 } from '@mantine/core';
@@ -15,7 +14,6 @@ import {
   IconPlayerPlay,
   IconCheck,
   IconX,
-  IconHistory,
 } from '@tabler/icons-react';
 import { useJobHistory } from '@/hooks';
 import { JobHistoryItem } from '@/lib/types';
@@ -23,15 +21,15 @@ import { JobHistoryItem } from '@/lib/types';
 function getStatusIcon(status: string) {
   switch (status) {
     case 'queued':
-      return <IconClock size={14} />;
+      return <IconClock size={12} />;
     case 'running':
-      return <IconPlayerPlay size={14} />;
+      return <IconPlayerPlay size={12} />;
     case 'completed':
-      return <IconCheck size={14} />;
+      return <IconCheck size={12} />;
     case 'failed':
-      return <IconX size={14} />;
+      return <IconX size={12} />;
     default:
-      return <IconClock size={14} />;
+      return <IconClock size={12} />;
   }
 }
 
@@ -51,40 +49,39 @@ function getStatusColor(status: string) {
 }
 
 function JobHistoryCard({ job }: { job: JobHistoryItem }) {
-  const { setCurrentJobId } = useJobHistory();
+  const { setCurrentJobId, currentJobId } = useJobHistory();
+  const isActive = currentJobId === job.job_id;
 
   return (
     <Paper
-      p="sm"
+      p="xs"
       radius="md"
       withBorder
-      style={{ cursor: 'pointer' }}
+      style={{
+        cursor: 'pointer',
+        borderColor: isActive ? 'var(--mantine-color-cyan-5)' : undefined,
+        backgroundColor: isActive ? 'var(--mantine-color-cyan-0)' : undefined,
+      }}
       onClick={() => setCurrentJobId(job.job_id)}
-      className="hover-card"
+      className="hover-lift"
     >
-      <Group justify="space-between" wrap="nowrap">
-        <Box style={{ minWidth: 0 }}>
-          <Text size="xs" fw={600} truncate>
-            {job.job_id.slice(0, 8)}...
+      <Group justify="space-between" wrap="nowrap" gap="xs">
+        <Box style={{ minWidth: 0, flex: 1 }}>
+          <Text size="xs" fw={500} className="font-mono" truncate>
+            {job.job_id.slice(0, 8)}
           </Text>
-          <Text size="xs" c="dimmed">
+          <Text size="xs" c="dimmed" truncate>
             {job.created_at}
           </Text>
         </Box>
         <Badge
-          size="sm"
-          variant="light"
+          size="xs"
+          variant="dot"
           color={getStatusColor(job.status)}
-          leftSection={getStatusIcon(job.status)}
         >
           {job.status}
         </Badge>
       </Group>
-      {job.file_count && (
-        <Text size="xs" c="dimmed" mt={4}>
-          {job.file_count} requirements
-        </Text>
-      )}
     </Paper>
   );
 }
@@ -93,33 +90,23 @@ export function JobHistory() {
   const { jobs } = useJobHistory();
   const recentJobs = jobs.slice(-5).reverse(); // Show last 5, newest first
 
-  return (
-    <Stack gap="sm">
-      <Group gap="xs">
-        <ThemeIcon size="sm" variant="light" color="cyan">
-          <IconHistory size={14} />
-        </ThemeIcon>
-        <Text size="sm" fw={600}>
-          Job History
+  if (recentJobs.length === 0) {
+    return (
+      <Paper p="sm" radius="md" withBorder>
+        <Text size="xs" c="dimmed" ta="center">
+          No jobs yet
         </Text>
-      </Group>
+      </Paper>
+    );
+  }
 
-      {recentJobs.length === 0 ? (
-        <Paper p="md" radius="md" withBorder>
-          <Text size="sm" c="dimmed" ta="center">
-            No jobs submitted yet
-          </Text>
-        </Paper>
-      ) : (
-        <ScrollArea.Autosize mah={400}>
-          <Stack gap="xs">
-            {recentJobs.map((job) => (
-              <JobHistoryCard key={job.job_id} job={job} />
-            ))}
-          </Stack>
-        </ScrollArea.Autosize>
-      )}
-    </Stack>
+  return (
+    <ScrollArea.Autosize mah={300}>
+      <Stack gap="xs">
+        {recentJobs.map((job) => (
+          <JobHistoryCard key={job.job_id} job={job} />
+        ))}
+      </Stack>
+    </ScrollArea.Autosize>
   );
 }
-

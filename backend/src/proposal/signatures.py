@@ -157,6 +157,8 @@ class DraftSectionFromThemes(dspy.Signature):
 # Categories to process in the specified order, grouped by proposal part
 PROPOSAL_SECTIONS = {
     "Part 1: The Promise (BLUF)": [
+        "Personnel & Qualifications",
+        "Past Performance",
         "Technical Approach & Capability",
         "Schedule & Milestones",
     ],
@@ -166,7 +168,6 @@ PROPOSAL_SECTIONS = {
         "Customer Service & Communications",
     ],
     "Part 3: The People (Low Risk)": [
-        "Personnel & Qualifications",
         "Training & Workforce Development",
         "Management & Staffing",
     ],
@@ -180,12 +181,13 @@ PROPOSAL_SECTIONS = {
 
 # Flat list of categories in processing order
 CATEGORY_ORDER = [
+    "Personnel & Qualifications",
+    "Past Performance",
     "Technical Approach & Capability",
     "Schedule & Milestones",
     "Performance & Deliverables",
     "Operations & Sustainment",
     "Customer Service & Communications",
-    "Personnel & Qualifications",
     "Training & Workforce Development",
     "Management & Staffing",
     "Quality Assurance",

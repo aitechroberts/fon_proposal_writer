@@ -17,6 +17,26 @@ from config import settings
 
 log = logging.getLogger(__name__)
 
+# #region agent log helper
+def _agent_log(hyp: str, loc: str, msg: str, data: Dict[str, Any] | None = None):
+    """Structured NDJSON debug log for debug mode."""
+    try:
+        p = Path("/root/fon_proposal_writer/.cursor/debug.log")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": hyp,
+            "location": loc,
+            "message": msg,
+            "data": data or {},
+            "timestamp": __import__("time").time(),
+        }
+        p.write_text(p.read_text() + __import__("json").dumps(payload) + "\n") if p.exists() else p.write_text(__import__("json").dumps(payload) + "\n")
+    except Exception:
+        pass
+# #endregion
+
 
 def _blob_account_parts() -> Dict[str, str]:
     """Parse Azure storage connection string into parts."""
@@ -40,6 +60,14 @@ def download_files_task(blob_urls: List[str], job_id: str) -> List[Path]:
     """Download files from Azure Blob Storage to local temp directory."""
     if not blob_urls:
         log.warning(f"No blob URLs provided for job {job_id}")
+        # #region agent log H1
+        _agent_log(
+            "H1",
+            "backend/pipeline/tasks.py:download_files_task:no_urls",
+            "No blob URLs provided",
+            {"job_id": job_id},
+        )
+        # #endregion
         return []
     
     temp_dir = Path(tempfile.mkdtemp(prefix=f"job_{job_id}_"))
@@ -49,6 +77,19 @@ def download_files_task(blob_urls: List[str], job_id: str) -> List[Path]:
         settings.azure_storage_connection_string
     )
     container_name = settings.azure_blob_container
+    # #region agent log H1
+    _agent_log(
+        "H1",
+        "backend/pipeline/tasks.py:download_files_task:start",
+        "Download start",
+        {
+            "job_id": job_id,
+            "blob_url_count": len(blob_urls),
+            "container": container_name,
+            "has_conn_string": bool(settings.azure_storage_connection_string),
+        },
+    )
+    # #endregion
     
     for i, blob_url in enumerate(blob_urls):
         try:
@@ -86,9 +127,25 @@ def download_files_task(blob_urls: List[str], job_id: str) -> List[Path]:
             
         except Exception as e:
             log.error(f"Failed to download {blob_url} for job {job_id}: {e}")
+            # #region agent log H1
+            _agent_log(
+                "H1",
+                "backend/pipeline/tasks.py:download_files_task:error",
+                "Download failed",
+                {"job_id": job_id, "blob_url": blob_url, "error": str(e)},
+            )
+            # #endregion
             continue
     
     log.info(f"Downloaded {len(downloaded_files)} files for job {job_id}")
+    # #region agent log H1
+    _agent_log(
+        "H1",
+        "backend/pipeline/tasks.py:download_files_task:complete",
+        "Download complete",
+        {"job_id": job_id, "downloaded_files": len(downloaded_files)},
+    )
+    # #endregion
     return downloaded_files
 
 
@@ -102,13 +159,41 @@ def run_dspy_pipeline_task(opportunity_id: str, input_files: List[Path]) -> List
     from main import run_dspy_pipeline
     
     log.info(f"Starting DSPy pipeline for {len(input_files)} files")
+    # #region agent log H2
+    _agent_log(
+        "H2",
+        "backend/pipeline/tasks.py:run_dspy_pipeline_task:start",
+        "DSPy pipeline start",
+        {
+            "opportunity_id": opportunity_id,
+            "input_files": len(input_files),
+            "azure_openai_configured": bool(settings.azure_api_base and settings.azure_openai_deployment),
+        },
+    )
+    # #endregion
     
     try:
         results = run_dspy_pipeline(opportunity_id, input_files)
         log.info(f"DSPy pipeline completed: {len(results)} requirements extracted")
+        # #region agent log H2
+        _agent_log(
+            "H2",
+            "backend/pipeline/tasks.py:run_dspy_pipeline_task:complete",
+            "DSPy pipeline complete",
+            {"results": len(results)},
+        )
+        # #endregion
         return results
     except Exception as e:
         log.error(f"DSPy pipeline failed: {e}")
+        # #region agent log H2
+        _agent_log(
+            "H2",
+            "backend/pipeline/tasks.py:run_dspy_pipeline_task:error",
+            "DSPy pipeline error",
+            {"opportunity_id": opportunity_id, "error": str(e)},
+        )
+        # #endregion
         raise
 
 

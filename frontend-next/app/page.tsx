@@ -6,14 +6,20 @@ import {
   Container,
   Grid,
   Stack,
-  Paper,
   LoadingOverlay,
   Box,
   Text,
   Transition,
   Alert,
+  NavLink,
+  Divider,
 } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import {
+  IconAlertCircle,
+  IconLayoutDashboard,
+  IconHistory,
+  IconBolt,
+} from '@tabler/icons-react';
 import {
   Header,
   JobForm,
@@ -43,50 +49,46 @@ export default function HomePage() {
     <AppShell
       header={{ height: 0 }}
       navbar={{
-        width: 280,
+        width: 260,
         breakpoint: 'md',
         collapsed: { mobile: true },
       }}
       padding="md"
-      style={{
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e6f6fd 100%)',
-        minHeight: '100vh',
-      }}
     >
-      <AppShell.Navbar p="md" style={{ background: 'white' }}>
-        <Stack gap="lg" h="100%">
-          <Box>
-            <Text
-              size="xs"
-              fw={700}
-              tt="uppercase"
-              c="dimmed"
-              mb="xs"
-              style={{ letterSpacing: '0.5px' }}
-            >
-              Navigation
+      <AppShell.Navbar
+        p="md"
+        style={{
+          background: 'white',
+          borderRight: '1px solid var(--mantine-color-gray-2)',
+        }}
+      >
+        <Stack gap="xs" h="100%">
+          {/* Logo / Brand */}
+          <Box pb="sm">
+            <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.5px' }}>
+              Menu
             </Text>
-            <Paper
-              p="sm"
-              radius="md"
-              style={{
-                background:
-                  'linear-gradient(90deg, rgba(4, 57, 94, 0.05) 0%, rgba(0, 163, 224, 0.05) 100%)',
-              }}
-            >
-              <Text size="sm" fw={500} c="navy">
-                📊 Dashboard
-              </Text>
-            </Paper>
           </Box>
 
-          <Box style={{ flex: 1 }}>
+          {/* Navigation */}
+          <NavLink
+            label="Dashboard"
+            leftSection={<IconLayoutDashboard size={18} />}
+            active
+            variant="light"
+            color="cyan"
+          />
+
+          <Divider my="sm" />
+
+          {/* Job History Section */}
+          <Box style={{ flex: 1, overflow: 'auto' }}>
             <Text
               size="xs"
               fw={700}
               tt="uppercase"
               c="dimmed"
-              mb="xs"
+              mb="sm"
               style={{ letterSpacing: '0.5px' }}
             >
               Recent Jobs
@@ -94,20 +96,19 @@ export default function HomePage() {
             <JobHistory />
           </Box>
 
-          <Box>
-            <Paper
-              p="md"
-              radius="md"
-              withBorder
-              style={{ borderColor: 'rgba(0, 163, 224, 0.3)' }}
-            >
+          <Divider my="sm" />
+
+          {/* Footer */}
+          <Box pt="xs">
+            <Stack gap={4} align="center">
+              <IconBolt size={16} color="var(--mantine-color-cyan-5)" />
               <Text size="xs" c="dimmed" ta="center">
-                RFP Compliance Matrix Generator
+                Powered by Azure OpenAI
               </Text>
-              <Text size="xs" c="dimmed" ta="center" mt={4}>
-                Powered by Azure OpenAI &amp; DSPy
+              <Text size="xs" c="dimmed" ta="center" opacity={0.7}>
+                &amp; DSPy
               </Text>
-            </Paper>
+            </Stack>
           </Box>
         </Stack>
       </AppShell.Navbar>
@@ -131,10 +132,10 @@ export default function HomePage() {
                 icon={<IconAlertCircle size={18} />}
                 title="Backend Unavailable"
                 color="red"
-                variant="filled"
+                variant="light"
               >
                 Cannot connect to the backend API. Please ensure the backend service
-                is running and try again.
+                is running.
               </Alert>
             )}
           </Transition>
@@ -148,7 +149,7 @@ export default function HomePage() {
 
             {/* Right Column - Processing & Status */}
             <Grid.Col span={{ base: 12, md: 5 }}>
-              <Stack gap="lg">
+              <Stack gap="md">
                 {!currentJobId && <ProcessingCard formData={formData} />}
                 {currentJobId && <JobStatus />}
               </Stack>
@@ -159,4 +160,3 @@ export default function HomePage() {
     </AppShell>
   );
 }
-

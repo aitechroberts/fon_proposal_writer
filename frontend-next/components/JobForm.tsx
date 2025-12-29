@@ -12,12 +12,15 @@ import {
   Divider,
   Box,
   Alert,
+  Badge,
 } from '@mantine/core';
 import {
   IconBuildingBank,
   IconFileUpload,
   IconKey,
   IconAlertCircle,
+  IconPlus,
+  IconFolder,
 } from '@tabler/icons-react';
 import { FileUpload } from './FileUpload';
 import { useJobHistory } from '@/hooks';
@@ -58,27 +61,28 @@ export function JobForm({ onFormChange }: JobFormProps) {
   };
 
   return (
-    <Stack gap="lg">
+    <Stack gap="md">
       {/* Job Submission Card */}
-      <Card shadow="sm" radius="lg" withBorder>
-        <Box
-          style={{
-            background: 'linear-gradient(90deg, #04395E 0%, #0A2E4D 55%, #00A3E0 100%)',
-            margin: '-1rem -1rem 1rem -1rem',
-            padding: '0.9rem 1.15rem',
-            borderRadius: '12px 12px 0 0',
-          }}
-        >
-          <Text c="white" fw={800} size="lg">
-            ➕ Submit New Job
-          </Text>
-        </Box>
+      <Card padding="lg">
+        <Card.Section withBorder inheritPadding py="sm">
+          <Group justify="space-between">
+            <Group gap="xs">
+              <IconPlus size={18} color="var(--mantine-color-cyan-6)" />
+              <Text fw={600} size="sm" c="navy.7">
+                Submit New Job
+              </Text>
+            </Group>
+            <Badge variant="light" color="cyan" size="sm">
+              New
+            </Badge>
+          </Group>
+        </Card.Section>
 
-        <Stack gap="md">
+        <Stack gap="md" mt="md">
           {/* Input Method Toggle */}
           <Box>
-            <Text size="sm" fw={500} mb="xs">
-              Choose input method:
+            <Text size="sm" fw={500} mb="xs" c="dimmed">
+              Input method
             </Text>
             <SegmentedControl
               value={inputMethod}
@@ -92,7 +96,7 @@ export function JobForm({ onFormChange }: JobFormProps) {
                   label: (
                     <Group gap="xs">
                       <IconFileUpload size={16} />
-                      <span>Manual File Upload</span>
+                      <span>File Upload</span>
                     </Group>
                   ),
                 },
@@ -101,7 +105,7 @@ export function JobForm({ onFormChange }: JobFormProps) {
                   label: (
                     <Group gap="xs">
                       <IconBuildingBank size={16} />
-                      <span>HigherGov Opportunity ID</span>
+                      <span>HigherGov ID</span>
                     </Group>
                   ),
                 },
@@ -113,107 +117,105 @@ export function JobForm({ onFormChange }: JobFormProps) {
 
           {useHighergov && !hasHighergovKey && (
             <Alert
-              icon={<IconAlertCircle size={18} />}
+              icon={<IconAlertCircle size={16} />}
               title="API Key Required"
               color="red"
               variant="light"
             >
-              HigherGov API key not configured. Please contact your administrator.
+              HigherGov API key not configured. Contact your administrator.
             </Alert>
           )}
 
           <Divider />
 
           {/* Output Settings */}
-          <Text size="sm" fw={600}>
-            Output Settings
-          </Text>
-          <TextInput
-            label="Custom filename (optional)"
-            placeholder="my-proposal-compliance-matrix"
-            description="Custom name for the output files"
-            value={customFilename}
-            onChange={(e) => {
-              setCustomFilename(e.target.value);
-              handleChange();
-            }}
-          />
+          <Box>
+            <Text size="sm" fw={500} mb="xs" c="dimmed">
+              Output settings
+            </Text>
+            <TextInput
+              label="Custom filename"
+              placeholder="my-proposal-compliance-matrix"
+              description="Optional name for output files"
+              value={customFilename}
+              onChange={(e) => {
+                setCustomFilename(e.target.value);
+                handleChange();
+              }}
+            />
+          </Box>
 
           <Divider />
 
           {/* Proposal Generation Options */}
-          <Text size="sm" fw={600}>
-            Proposal Generation
-          </Text>
-          <Switch
-            label="Generate proposal document"
-            description="Automatically generate a Word proposal document from extracted requirements"
-            checked={generateProposal}
-            onChange={(e) => {
-              setGenerateProposal(e.currentTarget.checked);
-              handleChange();
-            }}
-            color="cyan"
-          />
-          {generateProposal && (
-            <Switch
-              label="Use enhanced two-stage writer (higher quality, slower)"
-              description="Uses a two-stage DSPy pipeline: theme analysis then drafting"
-              checked={useTwoStageWriter}
-              onChange={(e) => {
-                setUseTwoStageWriter(e.currentTarget.checked);
-                handleChange();
-              }}
-              color="cyan"
-              ml="md"
-            />
-          )}
+          <Box>
+            <Text size="sm" fw={500} mb="sm" c="dimmed">
+              Proposal generation
+            </Text>
+            <Stack gap="sm">
+              <Switch
+                label="Generate proposal document"
+                description="Auto-generate a Word document from extracted requirements"
+                checked={generateProposal}
+                onChange={(e) => {
+                  setGenerateProposal(e.currentTarget.checked);
+                  handleChange();
+                }}
+                color="cyan"
+              />
+              {generateProposal && (
+                <Switch
+                  label="Enhanced two-stage writer"
+                  description="Higher quality output using theme analysis (slower)"
+                  checked={useTwoStageWriter}
+                  onChange={(e) => {
+                    setUseTwoStageWriter(e.currentTarget.checked);
+                    handleChange();
+                  }}
+                  color="cyan"
+                  ml="md"
+                />
+              )}
+            </Stack>
+          </Box>
         </Stack>
       </Card>
 
       {/* Documents Card */}
-      <Card shadow="sm" radius="lg" withBorder>
-        <Box
-          style={{
-            background: 'linear-gradient(90deg, #04395E 0%, #0A2E4D 55%, #00A3E0 100%)',
-            margin: '-1rem -1rem 1rem -1rem',
-            padding: '0.9rem 1.15rem',
-            borderRadius: '12px 12px 0 0',
-          }}
-        >
-          <Text c="white" fw={800} size="lg">
-            📁 Provide Documents
-          </Text>
-        </Box>
+      <Card padding="lg">
+        <Card.Section withBorder inheritPadding py="sm">
+          <Group gap="xs">
+            <IconFolder size={18} color="var(--mantine-color-cyan-6)" />
+            <Text fw={600} size="sm" c="navy.7">
+              Documents
+            </Text>
+          </Group>
+        </Card.Section>
 
-        {useHighergov ? (
-          <Stack gap="md">
-            <Text size="sm" fw={600}>
-              HigherGov Integration
-            </Text>
-            <TextInput
-              label="Opportunity ID"
-              placeholder="e.g., abc123xyz or SAM notice ID"
-              description="Enter the opportunity ID from HigherGov or SAM.gov"
-              leftSection={<IconKey size={16} />}
-              value={opportunityId}
-              onChange={(e) => {
-                setOpportunityId(e.target.value);
-                handleChange();
-              }}
-              disabled={!hasHighergovKey}
-            />
-          </Stack>
-        ) : (
-          <Stack gap="md">
-            <Text size="sm" fw={600}>
-              Manual File Upload
-            </Text>
+        <Box mt="md">
+          {useHighergov ? (
+            <Stack gap="md">
+              <Text size="sm" c="dimmed">
+                Enter your HigherGov opportunity ID to automatically fetch documents.
+              </Text>
+              <TextInput
+                label="Opportunity ID"
+                placeholder="e.g., abc123xyz or SAM notice ID"
+                description="From HigherGov or SAM.gov"
+                leftSection={<IconKey size={16} />}
+                value={opportunityId}
+                onChange={(e) => {
+                  setOpportunityId(e.target.value);
+                  handleChange();
+                }}
+                disabled={!hasHighergovKey}
+              />
+            </Stack>
+          ) : (
             <FileUpload />
-          </Stack>
-        )}
+          )}
+        </Box>
       </Card>
     </Stack>
   );
 }
-

@@ -11,6 +11,7 @@ import {
   Badge,
   ActionIcon,
   Progress,
+  Skeleton,
 } from '@mantine/core';
 import { Dropzone, FileWithPath, MIME_TYPES } from '@mantine/dropzone';
 import {
@@ -36,16 +37,29 @@ const ACCEPTED_MIME_TYPES = [
 
 function getFileIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf') return <IconFileTypePdf size={20} />;
-  if (['doc', 'docx'].includes(ext || '')) return <IconFileTypeDocx size={20} />;
-  if (['xls', 'xlsx'].includes(ext || '')) return <IconFileSpreadsheet size={20} />;
-  return <IconFile size={20} />;
+  if (ext === 'pdf') return <IconFileTypePdf size={18} color="var(--mantine-color-red-5)" />;
+  if (['doc', 'docx'].includes(ext || '')) return <IconFileTypeDocx size={18} color="var(--mantine-color-blue-5)" />;
+  if (['xls', 'xlsx'].includes(ext || '')) return <IconFileSpreadsheet size={18} color="var(--mantine-color-green-5)" />;
+  return <IconFile size={18} />;
 }
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function UploadingSkeleton() {
+  return (
+    <Stack gap="sm">
+      <Skeleton height={120} radius="md" />
+      <Group justify="space-between">
+        <Skeleton height={14} width={120} />
+        <Skeleton height={20} width={80} radius="sm" />
+      </Group>
+      <Skeleton height={36} radius="md" />
+    </Stack>
+  );
 }
 
 export function FileUpload() {
@@ -71,57 +85,62 @@ export function FileUpload() {
       setBlobUrls(result.blob_urls);
       notifications.show({
         title: 'Upload Successful',
-        message: `${result.blob_urls.length} file(s) uploaded to cloud storage`,
+        message: `${result.blob_urls.length} file(s) uploaded`,
         color: 'teal',
-        icon: <IconCheck size={18} />,
+        icon: <IconCheck size={16} />,
       });
     } catch (error) {
       notifications.show({
         title: 'Upload Failed',
         message: error instanceof Error ? error.message : 'Failed to upload files',
         color: 'red',
-        icon: <IconX size={18} />,
+        icon: <IconX size={16} />,
       });
     }
   };
 
+  // Show skeleton during upload
+  if (uploadMutation.isPending) {
+    return <UploadingSkeleton />;
+  }
+
   return (
-    <Stack gap="md">
+    <Stack gap="sm">
       <Dropzone
         onDrop={handleDrop}
         accept={ACCEPTED_MIME_TYPES}
         disabled={isUploaded}
-        loading={uploadMutation.isPending}
+        radius="md"
         style={{
-          borderColor: isUploaded ? '#4caf50' : undefined,
-          backgroundColor: isUploaded ? '#e8f5e8' : undefined,
+          borderColor: isUploaded ? 'var(--mantine-color-teal-5)' : undefined,
+          backgroundColor: isUploaded ? 'var(--mantine-color-teal-0)' : undefined,
         }}
       >
-        <Group justify="center" gap="xl" mih={140} style={{ pointerEvents: 'none' }}>
+        <Group justify="center" gap="lg" mih={100} style={{ pointerEvents: 'none' }}>
           <Dropzone.Accept>
-            <IconUpload size={52} stroke={1.5} color="#00A3E0" />
+            <IconUpload size={40} stroke={1.5} color="var(--mantine-color-cyan-5)" />
           </Dropzone.Accept>
           <Dropzone.Reject>
-            <IconX size={52} stroke={1.5} color="red" />
+            <IconX size={40} stroke={1.5} color="var(--mantine-color-red-5)" />
           </Dropzone.Reject>
           <Dropzone.Idle>
             {isUploaded ? (
-              <IconCheck size={52} stroke={1.5} color="#4caf50" />
+              <IconCheck size={40} stroke={1.5} color="var(--mantine-color-teal-5)" />
             ) : (
-              <IconCloudUpload size={52} stroke={1.5} color="#04395E" />
+              <IconCloudUpload size={40} stroke={1.5} color="var(--mantine-color-dimmed)" />
             )}
           </Dropzone.Idle>
 
           <Box>
-            <Text size="lg" fw={600} inline>
+            <Text size="sm" fw={500}>
               {isUploaded
-                ? 'Files uploaded successfully!'
+                ? 'Files uploaded successfully'
                 : 'Drag documents here or click to browse'}
             </Text>
-            <Text size="sm" c="dimmed" inline mt={7}>
+            <Text size="xs" c="dimmed" mt={4}>
               {isUploaded
-                ? `${blobUrls.length} file(s) ready for processing`
-                : 'Accepts PDF, Word (.doc, .docx), and Excel (.xls, .xlsx) files'}
+                ? `${blobUrls.length} file(s) ready`
+                : 'PDF, Word, Excel supported'}
             </Text>
           </Box>
         </Group>
@@ -129,57 +148,63 @@ export function FileUpload() {
 
       {files.length > 0 && !isUploaded && (
         <>
-          <Paper p="md" withBorder>
-            <Text size="sm" fw={600} mb="sm">
-              Selected Files ({files.length})
+          <Paper p="sm" withBorder radius="md">
+            <Text size="xs" fw={500} c="dimmed" mb="xs">
+              Selected ({files.length})
             </Text>
             <Stack gap="xs">
               {files.map((file, index) => (
-                <Group key={`${file.name}-${index}`} justify="space-between">
-                  <Group gap="sm">
+                <Group key={`${file.name}-${index}`} justify="space-between" wrap="nowrap">
+                  <Group gap="xs" style={{ overflow: 'hidden', flex: 1 }}>
                     {getFileIcon(file.name)}
-                    <Text size="sm">{file.name}</Text>
-                    <Badge size="sm" variant="light">
-                      {formatFileSize(file.size)}
-                    </Badge>
+                    <Text size="xs" truncate style={{ flex: 1 }}>
+                      {file.name}
+                    </Text>
                   </Group>
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    size="sm"
-                    onClick={() => removeFile(index)}
-                  >
-                    <IconX size={16} />
-                  </ActionIcon>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="xs" c="dimmed" className="font-mono">
+                      {formatFileSize(file.size)}
+                    </Text>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      size="xs"
+                      onClick={() => removeFile(index)}
+                    >
+                      <IconX size={14} />
+                    </ActionIcon>
+                  </Group>
                 </Group>
               ))}
             </Stack>
           </Paper>
 
-          {uploadMutation.isPending && (
-            <Progress value={100} animated color="cyan" />
-          )}
-
           <Button
-            leftSection={<IconCloudUpload size={18} />}
+            leftSection={<IconCloudUpload size={16} />}
             onClick={handleUpload}
             loading={uploadMutation.isPending}
             disabled={files.length === 0}
-            variant="gradient"
-            gradient={{ from: 'cyan', to: 'teal', deg: 90 }}
-            size="md"
+            color="cyan"
+            size="sm"
+            fullWidth
           >
-            Upload to Cloud Storage
+            Upload to Cloud
           </Button>
         </>
       )}
 
       {isUploaded && (
-        <Badge size="lg" color="teal" variant="light" leftSection={<IconCheck size={14} />}>
-          {blobUrls.length} file(s) ready for processing
-        </Badge>
+        <Group justify="center">
+          <Badge
+            size="md"
+            color="teal"
+            variant="light"
+            leftSection={<IconCheck size={12} />}
+          >
+            {blobUrls.length} file(s) ready
+          </Badge>
+        </Group>
       )}
     </Stack>
   );
 }
-

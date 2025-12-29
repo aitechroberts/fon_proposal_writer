@@ -2,11 +2,11 @@
 
 import { Stack, Button, Group, Text, Badge, Divider, Box } from '@mantine/core';
 import {
-  IconDownload,
   IconFileSpreadsheet,
   IconFileText,
   IconPackage,
   IconCheck,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { JobResultsResponse } from '@/lib/types';
 import { useJobHistory } from '@/hooks';
@@ -20,33 +20,27 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
 
   return (
     <Stack gap="md">
-      <Divider label="Processing Complete" labelPosition="center" />
-
-      {/* Stats */}
-      <Group justify="center" gap="xl">
-        <Box ta="center">
-          <Text size="2rem" fw={800} c="teal">
-            {results.file_count || 0}
-          </Text>
-          <Text size="xs" c="dimmed">
-            Requirements Extracted
-          </Text>
-        </Box>
-        <Box ta="center">
-          <Badge size="xl" variant="light" color="teal" leftSection={<IconCheck size={14} />}>
+      <Divider
+        label={
+          <Badge variant="light" color="teal" leftSection={<IconCheck size={12} />}>
             Complete
           </Badge>
-        </Box>
-      </Group>
+        }
+        labelPosition="center"
+      />
 
-      <Divider />
+      {/* Stats */}
+      <Box ta="center" py="xs">
+        <Text className="font-mono" size="xl" fw={700} c="teal">
+          {results.file_count || 0}
+        </Text>
+        <Text size="xs" c="dimmed">
+          requirements extracted
+        </Text>
+      </Box>
 
       {/* Download Buttons */}
-      <Text size="sm" fw={600}>
-        📥 Download Results
-      </Text>
-
-      <Stack gap="sm">
+      <Stack gap="xs">
         {/* ZIP Download (All outputs) */}
         {results.zip_sas_url && (
           <Button
@@ -54,17 +48,16 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
             href={results.zip_sas_url}
             target="_blank"
             rel="noopener noreferrer"
-            leftSection={<IconPackage size={18} />}
-            variant="gradient"
-            gradient={{ from: 'violet', to: 'grape', deg: 90 }}
-            size="lg"
+            leftSection={<IconPackage size={16} />}
+            color="violet"
+            size="sm"
             fullWidth
           >
             Download All (ZIP)
           </Button>
         )}
 
-        <Group grow>
+        <Group grow gap="xs">
           {/* Compliance Matrix */}
           {results.requirements_sas_url && (
             <Button
@@ -72,12 +65,12 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
               href={results.requirements_sas_url}
               target="_blank"
               rel="noopener noreferrer"
-              leftSection={<IconFileSpreadsheet size={18} />}
-              variant="gradient"
-              gradient={{ from: 'teal', to: 'green', deg: 90 }}
-              size="md"
+              leftSection={<IconFileSpreadsheet size={16} />}
+              color="teal"
+              variant="light"
+              size="xs"
             >
-              Compliance Matrix (Excel)
+              Matrix
             </Button>
           )}
 
@@ -88,19 +81,19 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
               href={results.proposal_sas_url}
               target="_blank"
               rel="noopener noreferrer"
-              leftSection={<IconFileText size={18} />}
-              variant="gradient"
-              gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
-              size="md"
+              leftSection={<IconFileText size={16} />}
+              color="blue"
+              variant="light"
+              size="xs"
             >
-              Proposal (Word)
+              Proposal
             </Button>
           )}
         </Group>
 
         {!results.proposal_sas_url && results.requirements_sas_url && (
           <Text size="xs" c="dimmed" ta="center">
-            Proposal generation was not requested or failed
+            Proposal not generated
           </Text>
         )}
       </Stack>
@@ -109,14 +102,15 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
 
       {/* New Job Button */}
       <Button
-        variant="outline"
+        variant="subtle"
         color="gray"
+        size="xs"
         onClick={clearCurrentJob}
-        leftSection={<IconDownload size={18} style={{ transform: 'rotate(180deg)' }} />}
+        leftSection={<IconRefresh size={14} />}
+        fullWidth
       >
-        Process New Job
+        New Job
       </Button>
     </Stack>
   );
 }
-

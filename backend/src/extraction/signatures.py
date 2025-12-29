@@ -19,7 +19,7 @@ class ExtractReqs(dspy.Signature):
 class ClassifyReq(dspy.Signature):
     """Normalize a single requirement object: ensure category/modality.
     Each requirement should be given a category from the following list:
-    {Submission, Eligibility & Set-Asides, Contract Type & Terms, Pricing & Payment, Evaluation & Award, Technical Approach & Capability, Management & Staffing, Personnel & Qualifications, Security (Personnel & Facility), Privacy & Data Protection, Compliance & Regulatory, Flowdowns & Subcontracting, Performance & Deliverables, Schedule & Milestones, Quality Assurance, Operations & Sustainment, Supply Chain & Property Management, Customer Service & Communications, Training & Workforce Development, Risk Management & Oversight Authority, Technology, Accessibility Sustainability, General Administrative}
+    {Past Performance, Submission, Eligibility & Set-Asides, Contract Type & Terms, Pricing & Payment, Evaluation & Award, Technical Approach & Capability, Management & Staffing, Personnel & Qualifications, Security (Personnel & Facility), Privacy & Data Protection, Compliance & Regulatory, Flowdowns & Subcontracting, Performance & Deliverables, Schedule & Milestones, Quality Assurance, Operations & Sustainment, Supply Chain & Property Management, Customer Service & Communications, Training & Workforce Development, Risk Management & Oversight Authority, Technology, Accessibility Sustainability, General Administrative}
     Input: one requirement JSON object. Output: the corrected object (JSON)."""
     
     req_json: str = InputField(desc="A single requirement object as JSON string")
@@ -43,7 +43,7 @@ class GroundReq(dspy.Signature):
 class BatchClassifyReq(dspy.Signature):
     """Classify many requirements. Ensure category/modality for each one.
     Each requirement should be given a Category from the following list:
-    {Submission, Eligibility & Set-Asides, Contract Type & Terms, Pricing & Payment, Evaluation & Award, Technical Approach & Capability, Management & Staffing, Personnel & Qualifications, Security (Personnel & Facility), Privacy & Data Protection, Compliance & Regulatory, Flowdowns & Subcontracting, Performance & Deliverables, Schedule & Milestones, Quality Assurance, Operations & Sustainment, Supply Chain & Property Management, Customer Service & Communications, Training & Workforce Development, Risk Management & Oversight Authority, Technology, Accessibility Sustainability, General Administrative}
+    {Past Performance, Submission, Eligibility & Set-Asides, Contract Type & Terms, Pricing & Payment, Evaluation & Award, Technical Approach & Capability, Management & Staffing, Personnel & Qualifications, Security (Personnel & Facility), Privacy & Data Protection, Compliance & Regulatory, Flowdowns & Subcontracting, Performance & Deliverables, Schedule & Milestones, Quality Assurance, Operations & Sustainment, Supply Chain & Property Management, Customer Service & Communications, Training & Workforce Development, Risk Management & Oversight Authority, Technology, Accessibility Sustainability, General Administrative}
     Input: JSON array of requirement objects. Output: JSON array of classified/categorized requirement objects."""
     reqs_json: str = dspy.InputField(desc="JSON array of requirement objects to classify")
     classified_json: str = dspy.OutputField(desc="JSON array of classified requirement objects")

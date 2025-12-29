@@ -1,7 +1,7 @@
 'use client';
 
-import { Box, Group, Text, Badge, Transition } from '@mantine/core';
-import { IconFileAnalytics, IconCircleCheck, IconAlertCircle } from '@tabler/icons-react';
+import { Box, Group, Text, Badge, ThemeIcon, Skeleton } from '@mantine/core';
+import { IconFileAnalytics } from '@tabler/icons-react';
 import { useBackendHealth } from '@/hooks';
 
 export function Header() {
@@ -9,65 +9,47 @@ export function Header() {
   const isHealthy = !isLoading && !isError && health?.status === 'healthy';
 
   return (
-    <Box
-      style={{
-        background: 'linear-gradient(90deg, #04395E 0%, #0A2E4D 55%, #00A3E0 100%)',
-        padding: '1.25rem 1.5rem',
-        borderRadius: '12px',
-        marginBottom: '1.5rem',
-      }}
-    >
+    <Box mb="xl" pt="xs">
       <Group justify="space-between" align="center">
         <Group gap="md">
-          <Box
-            style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              borderRadius: '10px',
-              padding: '10px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08)',
-            }}
+          {/* Logo mark with gradient accent */}
+          <ThemeIcon
+            size={44}
+            radius="md"
+            variant="gradient"
+            gradient={{ from: 'navy.6', to: 'cyan.5', deg: 135 }}
           >
-            <IconFileAnalytics size={32} color="#04395E" stroke={1.8} />
-          </Box>
+            <IconFileAnalytics size={24} stroke={1.5} />
+          </ThemeIcon>
+
           <Box>
             <Text
               size="xl"
-              fw={800}
-              c="white"
+              fw={700}
+              c="navy.7"
               style={{ letterSpacing: '-0.5px', lineHeight: 1.2 }}
             >
-              RFP Compliance Matrix Generator
+              Proposal Writer
             </Text>
-            <Text size="sm" c="white" opacity={0.85} mt={2}>
-              Transform government RFPs into compliance matrices with AI-powered extraction
+            <Text size="sm" c="dimmed">
+              Compliance Matrix Generator
             </Text>
           </Box>
         </Group>
 
-        <Transition mounted={!isLoading} transition="fade" duration={200}>
-          {(styles) => (
-            <Badge
-              style={styles}
-              size="lg"
-              variant="filled"
-              color={isHealthy ? 'teal' : 'red'}
-              leftSection={
-                isHealthy ? (
-                  <IconCircleCheck size={14} />
-                ) : (
-                  <IconAlertCircle size={14} />
-                )
-              }
-            >
-              {isHealthy ? 'API Connected' : 'API Offline'}
-            </Badge>
-          )}
-        </Transition>
+        {/* Status indicator */}
+        {isLoading ? (
+          <Skeleton height={24} width={120} radius="sm" />
+        ) : (
+          <Badge
+            size="md"
+            variant="dot"
+            color={isHealthy ? 'teal' : 'red'}
+          >
+            {isHealthy ? 'System Operational' : 'System Offline'}
+          </Badge>
+        )}
       </Group>
     </Box>
   );
 }
-

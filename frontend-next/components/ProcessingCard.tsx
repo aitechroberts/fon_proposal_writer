@@ -1,7 +1,7 @@
 'use client';
 
-import { Card, Text, Button, Stack, Alert, Box } from '@mantine/core';
-import { IconRocket, IconAlertCircle, IconUpload } from '@tabler/icons-react';
+import { Card, Text, Button, Stack, Alert, Box, Group } from '@mantine/core';
+import { IconRocket, IconAlertCircle, IconUpload, IconCpu } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useJobSubmit, useJobHistory, useBackendHealth } from '@/hooks';
 
@@ -69,50 +69,44 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
   };
 
   return (
-    <Card shadow="sm" radius="lg" withBorder>
-      <Box
-        style={{
-          background: 'linear-gradient(90deg, #04395E 0%, #0A2E4D 55%, #00A3E0 100%)',
-          margin: '-1rem -1rem 1rem -1rem',
-          padding: '0.9rem 1.15rem',
-          borderRadius: '12px 12px 0 0',
-        }}
-      >
-        <Text c="white" fw={800} size="lg">
-          ⚙️ Processing
-        </Text>
-      </Box>
+    <Card padding="lg">
+      <Card.Section withBorder inheritPadding py="sm">
+        <Group gap="xs">
+          <IconCpu size={18} color="var(--mantine-color-cyan-6)" />
+          <Text fw={600} size="sm" c="navy.7">
+            Processing
+          </Text>
+        </Group>
+      </Card.Section>
 
-      <Stack gap="md">
+      <Stack gap="md" mt="md">
         {isHealthError && (
           <Alert
-            icon={<IconAlertCircle size={18} />}
+            icon={<IconAlertCircle size={16} />}
             title="Backend Unavailable"
             color="red"
             variant="light"
           >
-            Cannot connect to the backend API. Please try again later.
+            Cannot connect to the backend API.
           </Alert>
         )}
 
         {!canProcess ? (
           !formData.useHighergov && blobUrls.length === 0 ? (
             <Alert
-              icon={<IconUpload size={18} />}
-              title="Upload Required"
+              icon={<IconUpload size={16} />}
               color="blue"
               variant="light"
             >
-              Click &quot;Upload to Cloud Storage&quot; first, then extract requirements
+              <Text size="sm">Upload files to cloud storage first</Text>
             </Alert>
           ) : (
             <Alert
-              icon={<IconAlertCircle size={18} />}
-              title="Documents Required"
+              icon={<IconAlertCircle size={16} />}
               color="blue"
               variant="light"
             >
-              Please provide documents to process
+              <Text size="sm">Provide documents to process</Text>
             </Alert>
           )
         ) : (
@@ -121,9 +115,8 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
             onClick={handleSubmit}
             loading={submitMutation.isPending}
             disabled={!canProcess || !isBackendHealthy}
-            variant="gradient"
-            gradient={{ from: 'cyan', to: 'teal', deg: 90 }}
-            size="lg"
+            color="cyan"
+            size="md"
             fullWidth
           >
             Extract Requirements
@@ -133,12 +126,11 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
         {canProcess && (
           <Text size="xs" c="dimmed" ta="center">
             {formData.useHighergov
-              ? `Processing opportunity: ${formData.opportunityId}`
-              : `${blobUrls.length} file(s) ready for processing`}
+              ? `Opportunity: ${formData.opportunityId}`
+              : `${blobUrls.length} file(s) ready`}
           </Text>
         )}
       </Stack>
     </Card>
   );
 }
-

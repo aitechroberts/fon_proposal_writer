@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install dependencies to /opt/venv (outside /app to avoid volume mount conflicts)
 WORKDIR /opt
-COPY pyproject.toml ./
-COPY uv.lock* ./
+COPY ./backend/pyproject.toml ./
+COPY ./backend/uv.lock* ./
 
 # Install dependencies with caching
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -25,7 +25,7 @@ WORKDIR /app
 ENV PYTHONPATH="/app:/app/src"
 
 # Copy all application code
-COPY . .
+COPY ./backend .
 
 # Create necessary directories
 RUN mkdir -p data/inputs tmp_outputs outputs logs

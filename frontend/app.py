@@ -155,7 +155,6 @@ def submit_job(
     use_highergov: bool,
     blob_urls: List[str] = None,
     generate_proposal: bool = True,
-    use_two_stage_writer: bool = False
 ) -> Optional[str]:
     """Submit a job to the backend API."""
     try:
@@ -165,7 +164,6 @@ def submit_job(
             "use_highergov": use_highergov,
             "blob_urls": blob_urls or [],
             "generate_proposal": generate_proposal,
-            "use_two_stage_writer": use_two_stage_writer
         }
         
         response = requests.post(f"{API_BASE}/jobs/submit", json=payload, timeout=30)
@@ -278,29 +276,16 @@ def main():
             st.info("No jobs submitted yet")
     
     # Main content
-    col1, col2 = st.columns([2, 1])
+    col1, _ = st.columns([2, 1])
     
     with col1:
         # Card 1: Job submission and output settings
         with st.container(border=True):
             st.markdown('<div class="card-header">➕ Submit New Job</div>', unsafe_allow_html=True)
 
-            # Input method selection
-            input_method = st.radio(
-                "Choose input method:",
-                options=["HigherGov Opportunity ID", "Manual File Upload"],
-                horizontal=True,
-                index=1,  # Default to Manual File Upload
-                help="Select how you want to provide documents for processing",
-            )
-
-            use_highergov = input_method == "HigherGov Opportunity ID"
-
-            # HigherGov API key check
-            has_highergov_key = bool(os.getenv("HIGHERGOV_API_KEY"))
-            if use_highergov and not has_highergov_key:
-                st.error("⚠️ HigherGov API key not configured. Add `HIGHERGOV_API_KEY` to your environment.")
-                st.stop()
+            # HigherGov temporarily disabled; manual upload only
+            use_highergov = False
+            st.info("HigherGov option is temporarily disabled. Please use manual file upload.")
 
             # Output settings
             st.subheader("Output Settings")
@@ -318,14 +303,6 @@ def main():
                 value=True,
                 help="Automatically generate a Word proposal document from extracted requirements"
             )
-            
-            use_two_stage_writer = False
-            if generate_proposal:
-                use_two_stage_writer = st.checkbox(
-                    "Use enhanced two-stage writer (higher quality, slower)",
-                    value=False,
-                    help="Uses a two-stage DSPy pipeline: theme analysis then drafting. Produces higher quality output but takes longer."
-                )
 
         # Card 2: Provide documents
         with st.container(border=True):
@@ -335,94 +312,77 @@ def main():
             uploaded_files = []
             blob_urls = st.session_state.get("blob_urls", [])
 
-            if use_highergov:
-                st.subheader("HigherGov Integration")
-                opportunity_id = st.text_input(
-                    "Opportunity ID:",
-                    placeholder="e.g., abc123xyz or SAM notice ID",
-                    help="Enter the opportunity ID from HigherGov or SAM.gov",
-                )
+            st.subheader("Manual File Upload")
+            st.markdown('<div class="upload-area">', unsafe_allow_html=True)
+            uploaded_files = st.file_uploader(
+                "Upload PDF, Word, or Excel files:",
+                type=["pdf", "docx", "doc", "xlsx", "xls"],
+                accept_multiple_files=True,
+                help="Upload documents to extract requirements from",
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
 
-                if opportunity_id:
-                    st.success(f"✓ Opportunity ID: {opportunity_id}")
-            else:
-                st.subheader("Manual File Upload")
-                st.markdown('<div class="upload-area">', unsafe_allow_html=True)
-                uploaded_files = st.file_uploader(
-                    "Upload PDF, Word, or Excel files:",
-                    type=["pdf", "docx", "doc", "xlsx", "xls"],
-                    accept_multiple_files=True,
-                    help="Upload documents to extract requirements from",
-                )
-                st.markdown('</div>', unsafe_allow_html=True)
+            if uploaded_files:
+                st.success(f"✓ {len(uploaded_files)} file(s) selected")
+                with st.expander("📋 Uploaded Files"):
+                    for file in uploaded_files:
+                        file_size_mb = len(file.getvalue()) / (1024 * 1024)
+                        st.write(f"• {file.name} ({file_size_mb:.2f} MB)")
 
-                if uploaded_files:
-                    st.success(f"✓ {len(uploaded_files)} file(s) selected")
-                    with st.expander("📋 Uploaded Files"):
-                        for file in uploaded_files:
-                            file_size_mb = len(file.getvalue()) / (1024 * 1024)
-                            st.write(f"• {file.name} ({file_size_mb:.2f} MB)")
-
-                    # Upload to blob storage via backend
-                    if st.button("📤 Upload to Cloud Storage"):
-                        with st.spinner("Uploading files to cloud storage..."):
-                            blob_urls = upload_files_to_backend(uploaded_files)
-                            if blob_urls:
-                                st.session_state.blob_urls = blob_urls
-                                st.success(f"✓ {len(blob_urls)} file(s) uploaded successfully")
-                            else:
-                                st.error("Failed to upload files")
-                    
-                    # Show uploaded status
-                    if "blob_urls" in st.session_state and st.session_state.blob_urls:
-                        blob_urls = st.session_state.blob_urls
-                        st.info(f"✓ {len(blob_urls)} file(s) ready for processing")
+                # Upload to blob storage via backend
+                if st.button("📤 Upload to Cloud Storage"):
+                    with st.spinner("Uploading files to cloud storage..."):
+                        blob_urls = upload_files_to_backend(uploaded_files)
+                        if blob_urls:
+                            st.session_state.blob_urls = blob_urls
+                            st.success(f"✓ {len(blob_urls)} file(s) uploaded successfully")
+                        else:
+                            st.error("Failed to upload files")
+                
+                # Show uploaded status
+                if "blob_urls" in st.session_state and st.session_state.blob_urls:
+                    blob_urls = st.session_state.blob_urls
+                    st.info(f"✓ {len(blob_urls)} file(s) ready for processing")
     
-    with col2:
-        with st.container(border=True):
-            st.markdown('<div class="card-header">⚙️ Processing</div>', unsafe_allow_html=True)
+    # Processing card moved below the main content for better layout
+    with st.container(border=True):
+        st.markdown('<div class="card-header">⚙️ Processing</div>', unsafe_allow_html=True)
 
-            # Validate inputs
-            can_process = False
-            if use_highergov:
-                can_process = bool(opportunity_id and opportunity_id.strip())
+        # Validate inputs
+        can_process = bool(blob_urls)  # Must have uploaded files to blob storage (not just selected files)
+
+        if not can_process:
+            if uploaded_files and not blob_urls:
+                st.warning("👆 Click 'Upload to Cloud Storage' first, then extract requirements")
             else:
-                # Must have uploaded files to blob storage (not just selected files)
-                can_process = bool(blob_urls)
+                st.info("👆 Please provide documents to process")
+        else:
+            # Process button
+            if st.button("🚀 Extract Requirements", type="primary", disabled=not can_process):
+                # Generate opportunity ID for manual uploads
+                if not opportunity_id:
+                    opportunity_id = f"manual-upload-{int(time.time())}"
 
-            if not can_process:
-                if uploaded_files and not blob_urls:
-                    st.warning("👆 Click 'Upload to Cloud Storage' first, then extract requirements")
-                else:
-                    st.info("👆 Please provide documents to process")
-            else:
-                # Process button
-                if st.button("🚀 Extract Requirements", type="primary", disabled=not can_process):
-                    # Generate opportunity ID for manual uploads
-                    if not opportunity_id:
-                        opportunity_id = f"manual-upload-{int(time.time())}"
+                # Submit job
+                with st.spinner("Submitting job..."):
+                    job_id = submit_job(
+                        opportunity_id,
+                        custom_filename,
+                        use_highergov,
+                        blob_urls,
+                        generate_proposal,
+                    )
 
-                    # Submit job
-                    with st.spinner("Submitting job..."):
-                        job_id = submit_job(
-                            opportunity_id,
-                            custom_filename,
-                            use_highergov,
-                            blob_urls,
-                            generate_proposal,
-                            use_two_stage_writer
-                        )
-
-                    if job_id:
-                        st.session_state.current_job_id = job_id
-                        st.session_state.job_history.append({
-                            "job_id": job_id,
-                            "status": "queued",
-                            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                            "opportunity_id": opportunity_id,
-                        })
-                        st.success(f"✅ Job submitted successfully! Job ID: {job_id[:8]}...")
-                        st.rerun()
+                if job_id:
+                    st.session_state.current_job_id = job_id
+                    st.session_state.job_history.append({
+                        "job_id": job_id,
+                        "status": "queued",
+                        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "opportunity_id": opportunity_id,
+                    })
+                    st.success(f"✅ Job submitted successfully! Job ID: {job_id[:8]}...")
+                    st.rerun()
     
     # Job status monitoring
     if "current_job_id" in st.session_state:

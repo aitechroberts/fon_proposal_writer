@@ -28,6 +28,26 @@ router = APIRouter()
 # In-memory job storage (replace with database in production)
 jobs_db: Dict[str, Dict[str, Any]] = {}
 
+# #region agent log helper
+def _agent_log(hyp: str, loc: str, msg: str, data: Dict[str, Any] | None = None):
+    """Structured NDJSON debug log for debug mode."""
+    try:
+        p = Path("/root/fon_proposal_writer/.cursor/debug.log")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": hyp,
+            "location": loc,
+            "message": msg,
+            "data": data or {},
+            "timestamp": __import__("time").time(),
+        }
+        p.write_text(p.read_text() + json.dumps(payload) + "\n") if p.exists() else p.write_text(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# #endregion
+
 
 @router.post("/jobs/submit", response_model=JobStatusResponse)
 async def submit_job(job_data: JobSubmission, background_tasks: BackgroundTasks):
@@ -179,6 +199,19 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         generate_proposal_task,
         zip_outputs_task,
     )
+    # #region agent log H1
+    _agent_log(
+        "H1",
+        "api/routes.py:run_pipeline_direct:start",
+        "Pipeline start",
+        {
+            "job_id": job_id,
+            "blob_url_count": len(job_data.blob_urls or []),
+            "generate_proposal": job_data.generate_proposal,
+            "use_two_stage": job_data.use_two_stage_writer,
+        },
+    )
+    # #endregion
     
     try:
         # Update job status to running
@@ -193,6 +226,14 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         jobs_db[job_id]["progress"] = 10.0
         
         downloaded_files = download_files_task(job_data.blob_urls or [], job_id)
+        # #region agent log H1
+        _agent_log(
+            "H1",
+            "api/routes.py:run_pipeline_direct:after_download",
+            "Download completed",
+            {"downloaded_files": len(downloaded_files)},
+        )
+        # #endregion
         
         if not downloaded_files:
             jobs_db[job_id]["status"] = JobStatus.FAILED
@@ -206,6 +247,14 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         jobs_db[job_id]["progress"] = 30.0
         
         requirements = run_dspy_pipeline_task(job_data.opportunity_id, downloaded_files)
+        # #region agent log H2
+        _agent_log(
+            "H2",
+            "api/routes.py:run_pipeline_direct:after_dspy",
+            "DSPy pipeline completed",
+            {"requirements_count": len(requirements) if requirements else 0},
+        )
+        # #endregion
         
         if not requirements:
             jobs_db[job_id]["status"] = JobStatus.COMPLETED
@@ -279,6 +328,14 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         
     except Exception as e:
         log.error(f"Job {job_id}: Pipeline failed: {e}")
+        # #region agent log H3
+        _agent_log(
+            "H3",
+            "api/routes.py:run_pipeline_direct:exception",
+            "Pipeline exception",
+            {"job_id": job_id, "error": str(e)},
+        )
+        # #endregion
         jobs_db[job_id]["status"] = JobStatus.FAILED
         jobs_db[job_id]["error_message"] = str(e)
         jobs_db[job_id]["updated_at"] = datetime.utcnow()

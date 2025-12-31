@@ -1,12 +1,13 @@
 'use client';
 
-import { Stack, Button, Group, Text, Badge, Divider, Box } from '@mantine/core';
+import { Stack, Button, Group, Text, Badge, Divider, Box, Tooltip } from '@mantine/core';
 import {
   IconFileSpreadsheet,
   IconFileText,
   IconPackage,
   IconCheck,
   IconRefresh,
+  IconQuote,
 } from '@tabler/icons-react';
 import { JobResultsResponse } from '@/lib/types';
 import { useJobHistory } from '@/hooks';
@@ -17,6 +18,8 @@ interface ResultsDownloadProps {
 
 export function ResultsDownload({ results }: ResultsDownloadProps) {
   const { clearCurrentJob } = useJobHistory();
+
+  const hasProposals = results.clean_proposal_sas_url || results.cited_proposal_sas_url;
 
   return (
     <Stack gap="md">
@@ -34,7 +37,7 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
         <Text className="font-mono" size="xl" fw={700} c="teal">
           {results.file_count || 0}
         </Text>
-        <Text size="xs" c="dimmed">
+        <Text size="xs" c="charcoal.5">
           requirements extracted
         </Text>
       </Box>
@@ -49,7 +52,7 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
             target="_blank"
             rel="noopener noreferrer"
             leftSection={<IconPackage size={16} />}
-            color="violet"
+            color="fonBlue"
             size="sm"
             fullWidth
           >
@@ -57,42 +60,66 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
           </Button>
         )}
 
-        <Group grow gap="xs">
-          {/* Compliance Matrix */}
-          {results.requirements_sas_url && (
-            <Button
-              component="a"
-              href={results.requirements_sas_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              leftSection={<IconFileSpreadsheet size={16} />}
-              color="teal"
-              variant="light"
-              size="xs"
-            >
-              Matrix
-            </Button>
-          )}
+        {/* Compliance Matrix */}
+        {results.requirements_sas_url && (
+          <Button
+            component="a"
+            href={results.requirements_sas_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            leftSection={<IconFileSpreadsheet size={16} />}
+            color="teal"
+            variant="light"
+            size="sm"
+            fullWidth
+          >
+            Compliance Matrix (Excel)
+          </Button>
+        )}
 
-          {/* Proposal Document */}
-          {results.proposal_sas_url && (
-            <Button
-              component="a"
-              href={results.proposal_sas_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              leftSection={<IconFileText size={16} />}
-              color="blue"
-              variant="light"
-              size="xs"
-            >
-              Proposal
-            </Button>
-          )}
-        </Group>
+        {/* Proposal Documents */}
+        {hasProposals && (
+          <Group grow gap="xs">
+            {/* Clean Proposal */}
+            {results.clean_proposal_sas_url && (
+              <Tooltip label="Citations removed - ready for submission" withArrow>
+                <Button
+                  component="a"
+                  href={results.clean_proposal_sas_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  leftSection={<IconFileText size={16} />}
+                  color="fonBlue"
+                  variant="light"
+                  size="xs"
+                >
+                  Clean Proposal
+                </Button>
+              </Tooltip>
+            )}
 
-        {!results.proposal_sas_url && results.requirements_sas_url && (
-          <Text size="xs" c="dimmed" ta="center">
+            {/* Cited Proposal */}
+            {results.cited_proposal_sas_url && (
+              <Tooltip label="Includes citations for reference" withArrow>
+                <Button
+                  component="a"
+                  href={results.cited_proposal_sas_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  leftSection={<IconQuote size={16} />}
+                  color="violet"
+                  variant="light"
+                  size="xs"
+                >
+                  Cited Proposal
+                </Button>
+              </Tooltip>
+            )}
+          </Group>
+        )}
+
+        {!hasProposals && results.requirements_sas_url && (
+          <Text size="xs" c="charcoal.5" ta="center">
             Proposal not generated
           </Text>
         )}
@@ -103,7 +130,7 @@ export function ResultsDownload({ results }: ResultsDownloadProps) {
       {/* New Job Button */}
       <Button
         variant="subtle"
-        color="gray"
+        color="charcoal"
         size="xs"
         onClick={clearCurrentJob}
         leftSection={<IconRefresh size={14} />}

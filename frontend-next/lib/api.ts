@@ -70,3 +70,6 @@ export async function getJobResults(jobId: string): Promise<JobResultsResponse> 
 // Export the API client for custom requests if needed
 export { apiClient };
 
+// Alias for convenience (used by useJobs hook)
+export const api = apiClient;
+

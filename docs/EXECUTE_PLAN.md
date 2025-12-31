@@ -40,9 +40,9 @@ export DOCUMENTINTELLIGENCE_API_KEY=...
 export ACR_LOGIN_SERVER=proposalapp.azurecr.io
 export AZURE_RESOURCE_GROUP=proposal-rg
 export ACA_ENV=proposal-env
-export ACA_APP_NAME=fon-frontend         
+export ACA_APP_NAME=proposal-frontend         
 # frontend Container App name
-export BACKEND_ACA_APP_NAME=fon-backend    
+export BACKEND_ACA_APP_NAME=proposal-backend    
 # backend Container App name
 ```
 
@@ -100,7 +100,7 @@ az containerapp create --name "$BACKEND_ACA_APP_NAME" --resource-group "$AZURE_R
 ```
 
 ### After create/update, add secrets manually via Azure Portal:
-1. Go to Azure Portal → Container Apps → `proposal-backend` → Settings → Secrets
+1. Go to Azure Portal → Container Apps → your backend app → Settings → Secrets
 2. Add secrets:
    - `AZURE_API_KEY` → your Azure OpenAI key
    - `AZURE_STORAGE_CONNECTION_STRING` → your storage connection string
@@ -141,7 +141,7 @@ az containerapp create --name "$ACA_APP_NAME" --resource-group "$AZURE_RESOURCE_
 ```
 
 ### After create/update, add HIGHERGOV_API_KEY manually via Portal (if used):
-1. Go to Azure Portal → Container Apps → `proposal-frontend` → Settings → Secrets
+1. Go to Azure Portal → Container Apps → your frontend app → Settings → Secrets
 2. Add secret: `HIGHERGOV_API_KEY` → your HigherGov key
 3. Go to Settings → Environment variables
 4. Add: `HIGHERGOV_API_KEY` → secretref: `HIGHERGOV_API_KEY`

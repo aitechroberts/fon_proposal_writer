@@ -2,6 +2,24 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database for job history
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fon
+      POSTGRES_PASSWORD: fon_secret
+      POSTGRES_DB: fon_proposals
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fon -d fon_proposals"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build: 
       context: .
@@ -17,9 +35,15 @@ services:
       - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
       - AZURE_BLOB_CONTAINER=${AZURE_BLOB_CONTAINER:-proposal-container}
       
+      # PostgreSQL Database
+      - DATABASE_URL=postgresql://fon:fon_secret@postgres:5432/fon_proposals
+      
       # Optional Azure Document Intelligence
       - DOCUMENTINTELLIGENCE_ENDPOINT=${DOCUMENTINTELLIGENCE_ENDPOINT}
       - DOCUMENTINTELLIGENCE_API_KEY=${DOCUMENTINTELLIGENCE_API_KEY}
+      
+      # Optional Application Insights
+      - APPLICATIONINSIGHTS_CONNECTION_STRING=${APPLICATIONINSIGHTS_CONNECTION_STRING}
       
       # Langfuse Configuration
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
@@ -32,8 +56,14 @@ services:
       # Application Settings
       - DEBUG=${DEBUG:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # CORS Settings (comma-separated origins, or "*" for dev)
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://frontend:3000}
     volumes:
       - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
@@ -42,7 +72,7 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  # Next.js Frontend (New - Primary)
+  # Next.js Frontend (Primary)
   frontend:
     build:
       context: ./frontend-next
@@ -64,28 +94,31 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  # Streamlit Frontend (Legacy - for reference)
-  frontend-streamlit:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "8501:8501"
-    environment:
-      - BACKEND_API_URL=http://backend:8000
-      - HIGHERGOV_API_KEY=${HIGHERGOV_API_KEY}
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-    profiles:
-      - streamlit  # Only run with: docker compose --profile streamlit up
+  # # Streamlit Frontend (Legacy - for reference)
+  # frontend-streamlit:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8501:8501"
+  #   environment:
+  #     - BACKEND_API_URL=http://backend:8000
+  #     - HIGHERGOV_API_KEY=${HIGHERGOV_API_KEY}
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+  #   restart: unless-stopped
+  #   profiles:
+  #     - streamlit  # Only run with: docker compose --profile streamlit up
+
+volumes:
+  postgres_data:
 
 networks:
   default:

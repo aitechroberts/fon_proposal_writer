@@ -1,52 +1,143 @@
 # backend/api/routes.py
 import uuid
 import logging
-import json
-from pathlib import Path
+import asyncio
 from datetime import datetime
-from typing import Dict, Any, List
-from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
+from typing import Dict, Any, List, Optional
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Query, Depends
 from azure.storage.blob import BlobServiceClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, desc, asc
 
-# #region agent log
-def _debug_log(hyp, loc, msg, data=None):
-    try:
-        p = Path("/root/fon_proposal_writer/.cursor/debug.log")
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "a") as f:
-            f.write(json.dumps({"hypothesisId": hyp, "location": loc, "message": msg, "data": data or {}, "timestamp": __import__("time").time()}) + "\n")
-    except: pass
-_debug_log("H1", "api/routes.py:top", "routes.py module loading")
-# #endregion
-
-from .models import JobSubmission, JobStatusResponse, JobResult, JobStatus, HealthResponse
+from .models import (
+    JobSubmission, JobStatusResponse, JobResult, JobStatus, HealthResponse,
+    JobListItem, JobListResponse
+)
 from config import settings
 
 log = logging.getLogger(__name__)
 router = APIRouter()
 
-# In-memory job storage (replace with database in production)
+# In-memory job storage for in-progress jobs
+# Completed jobs are persisted to PostgreSQL
 jobs_db: Dict[str, Dict[str, Any]] = {}
 
-# #region agent log helper
-def _agent_log(hyp: str, loc: str, msg: str, data: Dict[str, Any] | None = None):
-    """Structured NDJSON debug log for debug mode."""
+
+def _save_completed_job_to_db(
+    job_id: str,
+    job_name: str,
+    created_at: datetime,
+    completed_at: datetime,
+    requirements_sas_url: Optional[str],
+    clean_proposal_sas_url: Optional[str],
+    cited_proposal_sas_url: Optional[str],
+    zip_sas_url: Optional[str],
+    file_count: int
+) -> None:
+    """
+    Save a completed job to the PostgreSQL database.
+    
+    This is called synchronously from the background task after successful completion.
+    Creates a fresh async engine/session to avoid event loop conflicts.
+    """
+    # #region agent log
+    import json, time
+    def _debug_log(hyp, msg, data=None):
+        try:
+            with open("/root/fon_proposal_writer/.cursor/debug.log", "a") as f:
+                f.write(json.dumps({"hypothesisId": hyp, "location": "routes.py:_save_completed_job_to_db", "message": msg, "data": data or {}, "timestamp": int(time.time()*1000), "sessionId": "debug-session"}) + "\n")
+        except: pass
+    # #endregion
+    
     try:
-        p = Path("/root/fon_proposal_writer/.cursor/debug.log")
-        p.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": hyp,
-            "location": loc,
-            "message": msg,
-            "data": data or {},
-            "timestamp": __import__("time").time(),
-        }
-        p.write_text(p.read_text() + json.dumps(payload) + "\n") if p.exists() else p.write_text(json.dumps(payload) + "\n")
-    except Exception:
-        pass
-# #endregion
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+        from db.models import Job
+        from config import settings
+        
+        # #region agent log
+        _debug_log("A", "Checking DATABASE_URL", {"has_url": bool(settings.database_url), "url_prefix": settings.database_url[:30] + "..." if settings.database_url and len(settings.database_url) > 30 else settings.database_url})
+        # #endregion
+        
+        if not settings.database_url:
+            log.warning("Database not configured - skipping job persistence")
+            # #region agent log
+            _debug_log("A", "DATABASE_URL is empty - RETURNING EARLY", {})
+            # #endregion
+            return
+        
+        # Convert sync URL to async URL if needed
+        db_url = settings.database_url
+        if db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        
+        # #region agent log
+        _debug_log("B", "Prepared async DB URL", {"has_sslmode": "sslmode" in db_url, "url_prefix": db_url[:50] + "..." if len(db_url) > 50 else db_url})
+        # #endregion
+        
+        async def _save():
+            # #region agent log
+            _debug_log("C", "Inside async _save(), about to create engine", {})
+            # #endregion
+            
+            # Create a fresh engine for this operation (avoids event loop conflicts)
+            engine = create_async_engine(db_url, echo=False)
+            async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+            
+            try:
+                async with async_session() as session:
+                    # #region agent log
+                    _debug_log("D", "Session created, creating Job object", {"job_id": job_id, "job_name": job_name})
+                    # #endregion
+                    
+                    job = Job(
+                        id=uuid.UUID(job_id),
+                        job_name=job_name,
+                        created_at=created_at,
+                        completed_at=completed_at,
+                        requirements_sas_url=requirements_sas_url,
+                        clean_proposal_sas_url=clean_proposal_sas_url,
+                        cited_proposal_sas_url=cited_proposal_sas_url,
+                        zip_sas_url=zip_sas_url,
+                        file_count=file_count,
+                    )
+                    session.add(job)
+                    
+                    # #region agent log
+                    _debug_log("D", "About to commit job to database", {"job_id": job_id})
+                    # #endregion
+                    
+                    await session.commit()
+                    
+                    # #region agent log
+                    _debug_log("D", "COMMIT SUCCESSFUL", {"job_id": job_id})
+                    # #endregion
+                    
+                    log.info(f"Saved completed job {job_id} to database")
+            except Exception as inner_e:
+                # #region agent log
+                _debug_log("D", "EXCEPTION during session/commit", {"error": str(inner_e), "error_type": type(inner_e).__name__})
+                # #endregion
+                raise
+            finally:
+                await engine.dispose()
+        
+        # #region agent log
+        _debug_log("C", "About to call asyncio.run(_save())", {})
+        # #endregion
+        
+        # Run async operation from sync context with fresh event loop
+        asyncio.run(_save())
+        
+        # #region agent log
+        _debug_log("C", "asyncio.run(_save()) completed successfully", {"job_id": job_id})
+        # #endregion
+        
+    except Exception as e:
+        # #region agent log
+        _debug_log("E", "OUTER EXCEPTION caught", {"error": str(e), "error_type": type(e).__name__})
+        # #endregion
+        log.error(f"Failed to save job {job_id} to database: {e}")
+        # Don't raise - job completed successfully, just database persistence failed
 
 
 @router.post("/jobs/submit", response_model=JobStatusResponse)
@@ -55,7 +146,7 @@ async def submit_job(job_data: JobSubmission, background_tasks: BackgroundTasks)
     job_id = str(uuid.uuid4())
     now = datetime.utcnow()
     
-    # Store job metadata
+    # Store job metadata in memory (for in-progress tracking)
     jobs_db[job_id] = {
         "job_id": job_id,
         "status": JobStatus.QUEUED,
@@ -68,7 +159,8 @@ async def submit_job(job_data: JobSubmission, background_tasks: BackgroundTasks)
         "generate_proposal": job_data.generate_proposal,
         "use_two_stage_writer": job_data.use_two_stage_writer,
         "requirements_sas_url": None,
-        "proposal_sas_url": None,
+        "clean_proposal_sas_url": None,
+        "cited_proposal_sas_url": None,
         "zip_sas_url": None,
         "file_count": 0,
         "progress": 0.0,
@@ -121,7 +213,8 @@ async def get_job_results(job_id: str):
             job_id=job_id,
             status=job["status"],
             requirements_sas_url=job.get("requirements_sas_url"),
-            proposal_sas_url=job.get("proposal_sas_url"),
+            clean_proposal_sas_url=job.get("clean_proposal_sas_url"),
+            cited_proposal_sas_url=job.get("cited_proposal_sas_url"),
             zip_sas_url=job.get("zip_sas_url"),
             file_count=job.get("file_count", 0),
             created_at=job["created_at"],
@@ -139,12 +232,98 @@ async def get_job_results(job_id: str):
         raise HTTPException(status_code=202, detail="Job not yet completed")
 
 
+@router.get("/jobs", response_model=JobListResponse)
+async def list_jobs(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search by job name"),
+    sort_by: str = Query("created_at", description="Sort field"),
+    sort_order: str = Query("desc", description="Sort order (asc or desc)")
+):
+    """
+    List completed jobs from the database with pagination.
+    
+    Only completed jobs are stored in the database; in-progress jobs
+    are tracked in-memory and not returned by this endpoint.
+    """
+    try:
+        from db.database import AsyncSessionLocal
+        from db.models import Job
+        
+        if AsyncSessionLocal is None:
+            # Database not configured - return empty list
+            return JobListResponse(
+                jobs=[],
+                total=0,
+                page=page,
+                limit=limit,
+                total_pages=0
+            )
+        
+        async with AsyncSessionLocal() as session:
+            # Build base query
+            query = select(Job)
+            count_query = select(func.count(Job.id))
+            
+            # Apply search filter (parameterized to prevent SQL injection)
+            if search:
+                search_pattern = f"%{search}%"
+                query = query.where(Job.job_name.ilike(search_pattern))
+                count_query = count_query.where(Job.job_name.ilike(search_pattern))
+            
+            # Get total count
+            total_result = await session.execute(count_query)
+            total = total_result.scalar() or 0
+            
+            # Apply sorting
+            sort_column = getattr(Job, sort_by, Job.created_at)
+            if sort_order.lower() == "asc":
+                query = query.order_by(asc(sort_column))
+            else:
+                query = query.order_by(desc(sort_column))
+            
+            # Apply pagination
+            offset = (page - 1) * limit
+            query = query.offset(offset).limit(limit)
+            
+            # Execute query
+            result = await session.execute(query)
+            jobs = result.scalars().all()
+            
+            # Convert to response model
+            job_items = [
+                JobListItem(
+                    id=str(job.id),
+                    job_name=job.job_name,
+                    created_at=job.created_at,
+                    completed_at=job.completed_at,
+                    requirements_sas_url=job.requirements_sas_url,
+                    clean_proposal_sas_url=job.clean_proposal_sas_url,
+                    cited_proposal_sas_url=job.cited_proposal_sas_url,
+                    zip_sas_url=job.zip_sas_url,
+                    file_count=job.file_count or 0,
+                )
+                for job in jobs
+            ]
+            
+            total_pages = (total + limit - 1) // limit if total > 0 else 0
+            
+            return JobListResponse(
+                jobs=job_items,
+                total=total,
+                page=page,
+                limit=limit,
+                total_pages=total_pages
+            )
+            
+    except Exception as e:
+        log.error(f"Failed to list jobs: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve jobs")
+
+
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint."""
-    # #region agent log H4
-    _debug_log("H4", "api/routes.py:health", "Health endpoint called")
-    # #endregion
     return HealthResponse(
         timestamp=datetime.utcnow()
     )
@@ -191,6 +370,8 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
     """
     Run the DSPy pipeline directly in the backend container.
     No external orchestration needed - just call the pipeline functions.
+    
+    On successful completion, saves the job to PostgreSQL database.
     """
     from pipeline.tasks import (
         download_files_task,
@@ -199,19 +380,6 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         generate_proposal_task,
         zip_outputs_task,
     )
-    # #region agent log H1
-    _agent_log(
-        "H1",
-        "api/routes.py:run_pipeline_direct:start",
-        "Pipeline start",
-        {
-            "job_id": job_id,
-            "blob_url_count": len(job_data.blob_urls or []),
-            "generate_proposal": job_data.generate_proposal,
-            "use_two_stage": job_data.use_two_stage_writer,
-        },
-    )
-    # #endregion
     
     try:
         # Update job status to running
@@ -226,14 +394,6 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         jobs_db[job_id]["progress"] = 10.0
         
         downloaded_files = download_files_task(job_data.blob_urls or [], job_id)
-        # #region agent log H1
-        _agent_log(
-            "H1",
-            "api/routes.py:run_pipeline_direct:after_download",
-            "Download completed",
-            {"downloaded_files": len(downloaded_files)},
-        )
-        # #endregion
         
         if not downloaded_files:
             jobs_db[job_id]["status"] = JobStatus.FAILED
@@ -247,14 +407,6 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         jobs_db[job_id]["progress"] = 30.0
         
         requirements = run_dspy_pipeline_task(job_data.opportunity_id, downloaded_files)
-        # #region agent log H2
-        _agent_log(
-            "H2",
-            "api/routes.py:run_pipeline_direct:after_dspy",
-            "DSPy pipeline completed",
-            {"requirements_count": len(requirements) if requirements else 0},
-        )
-        # #endregion
         
         if not requirements:
             jobs_db[job_id]["status"] = JobStatus.COMPLETED
@@ -282,12 +434,15 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         
         jobs_db[job_id]["requirements_sas_url"] = requirements_sas_url
         
-        # Step 4: Generate proposal document (if requested)
-        proposal_sas_url = ""
-        proposal_path = None
+        # Step 4: Generate proposal documents (if requested) - now generates both cited and clean
+        clean_proposal_sas_url = ""
+        cited_proposal_sas_url = ""
+        clean_proposal_path = None
+        cited_proposal_path = None
+        
         if job_data.generate_proposal:
-            log.info(f"Job {job_id}: Generating proposal document")
-            jobs_db[job_id]["message"] = "Generating proposal..."
+            log.info(f"Job {job_id}: Generating proposal documents")
+            jobs_db[job_id]["message"] = "Generating proposals..."
             jobs_db[job_id]["progress"] = 70.0
             
             try:
@@ -298,9 +453,13 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
                     custom_filename=job_data.custom_filename,
                     use_two_stage=job_data.use_two_stage_writer
                 )
-                proposal_sas_url = proposal_result["proposal_sas_url"]
-                proposal_path = proposal_result["local_path"]
-                jobs_db[job_id]["proposal_sas_url"] = proposal_sas_url
+                clean_proposal_sas_url = proposal_result.get("clean_proposal_sas_url", "")
+                cited_proposal_sas_url = proposal_result.get("cited_proposal_sas_url", "")
+                clean_proposal_path = proposal_result.get("clean_proposal_path")
+                cited_proposal_path = proposal_result.get("cited_proposal_path")
+                
+                jobs_db[job_id]["clean_proposal_sas_url"] = clean_proposal_sas_url
+                jobs_db[job_id]["cited_proposal_sas_url"] = cited_proposal_sas_url
             except Exception as e:
                 log.error(f"Job {job_id}: Proposal generation failed (non-fatal): {e}")
         
@@ -311,31 +470,39 @@ def run_pipeline_direct(job_id: str, job_data: JobSubmission):
         
         zip_sas_url = zip_outputs_task(
             matrix_paths=matrix_paths,
-            proposal_path=proposal_path,
+            clean_proposal_path=clean_proposal_path,
+            cited_proposal_path=cited_proposal_path,
             job_id=job_id,
             opportunity_id=job_data.opportunity_id,
             custom_filename=job_data.custom_filename
         )
         jobs_db[job_id]["zip_sas_url"] = zip_sas_url
         
-        # Done
+        # Done - mark as completed
+        completed_at = datetime.utcnow()
         jobs_db[job_id]["status"] = JobStatus.COMPLETED
         jobs_db[job_id]["message"] = "Processing completed successfully"
-        jobs_db[job_id]["completed_at"] = datetime.utcnow()
+        jobs_db[job_id]["completed_at"] = completed_at
         jobs_db[job_id]["progress"] = 100.0
         
         log.info(f"Job {job_id}: Pipeline completed successfully")
         
+        # Save completed job to database (write-only on success)
+        job_name = job_data.custom_filename or job_data.opportunity_id
+        _save_completed_job_to_db(
+            job_id=job_id,
+            job_name=job_name,
+            created_at=jobs_db[job_id]["created_at"],
+            completed_at=completed_at,
+            requirements_sas_url=requirements_sas_url,
+            clean_proposal_sas_url=clean_proposal_sas_url,
+            cited_proposal_sas_url=cited_proposal_sas_url,
+            zip_sas_url=zip_sas_url,
+            file_count=len(requirements)
+        )
+        
     except Exception as e:
         log.error(f"Job {job_id}: Pipeline failed: {e}")
-        # #region agent log H3
-        _agent_log(
-            "H3",
-            "api/routes.py:run_pipeline_direct:exception",
-            "Pipeline exception",
-            {"job_id": job_id, "error": str(e)},
-        )
-        # #endregion
         jobs_db[job_id]["status"] = JobStatus.FAILED
         jobs_db[job_id]["error_message"] = str(e)
         jobs_db[job_id]["updated_at"] = datetime.utcnow()

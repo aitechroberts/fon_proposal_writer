@@ -22,25 +22,26 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
 
   const isBackendHealthy = health?.status === 'healthy';
   
-  // Can process if:
-  // - Using HigherGov and has opportunity ID, OR
-  // - Manual upload and has blob URLs
-  const canProcess = formData.useHighergov
-    ? formData.opportunityId.trim().length > 0
-    : blobUrls.length > 0;
+  // Job name is required
+  const hasJobName = formData.customFilename.trim().length > 0;
+  
+  // Manual upload only - HigherGov not yet implemented
+  const hasDocuments = blobUrls.length > 0;
+  
+  const canProcess = hasJobName && hasDocuments;
 
   const handleSubmit = async () => {
     // Generate opportunity ID for manual uploads
-    const opportunityId = formData.opportunityId || `manual-upload-${Date.now()}`;
+    const opportunityId = `manual-upload-${Date.now()}`;
 
     try {
       const result = await submitMutation.mutateAsync({
         opportunity_id: opportunityId,
         custom_filename: formData.customFilename || undefined,
-        use_highergov: formData.useHighergov,
+        use_highergov: false, // HigherGov not yet implemented
         blob_urls: blobUrls,
         generate_proposal: formData.generateProposal,
-        use_two_stage_writer: formData.useTwoStageWriter,
+        use_two_stage_writer: false, // Two-stage writer not yet implemented
       });
 
       // Add to history
@@ -72,8 +73,8 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
     <Card padding="lg">
       <Card.Section withBorder inheritPadding py="sm">
         <Group gap="xs">
-          <IconCpu size={18} color="var(--mantine-color-cyan-6)" />
-          <Text fw={600} size="sm" c="navy.7">
+          <IconCpu size={18} color="var(--mantine-color-fonBlue-5)" />
+          <Text fw={600} size="sm" c="charcoal.7">
             Processing
           </Text>
         </Group>
@@ -92,21 +93,21 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
         )}
 
         {!canProcess ? (
-          !formData.useHighergov && blobUrls.length === 0 ? (
+          !hasJobName ? (
             <Alert
-              icon={<IconUpload size={16} />}
-              color="blue"
+              icon={<IconAlertCircle size={16} />}
+              color="orange"
               variant="light"
             >
-              <Text size="sm">Upload files to cloud storage first</Text>
+              <Text size="sm">Enter a job name to continue</Text>
             </Alert>
           ) : (
             <Alert
-              icon={<IconAlertCircle size={16} />}
-              color="blue"
+              icon={<IconUpload size={16} />}
+              color="fonBlue"
               variant="light"
             >
-              <Text size="sm">Provide documents to process</Text>
+              <Text size="sm">Upload files to cloud storage first</Text>
             </Alert>
           )
         ) : (
@@ -115,7 +116,7 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
             onClick={handleSubmit}
             loading={submitMutation.isPending}
             disabled={!canProcess || !isBackendHealthy}
-            color="cyan"
+            color="fonBlue"
             size="md"
             fullWidth
           >
@@ -124,10 +125,8 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
         )}
 
         {canProcess && (
-          <Text size="xs" c="dimmed" ta="center">
-            {formData.useHighergov
-              ? `Opportunity: ${formData.opportunityId}`
-              : `${blobUrls.length} file(s) ready`}
+          <Text size="xs" c="charcoal.5" ta="center">
+            {blobUrls.length} file(s) ready
           </Text>
         )}
       </Stack>

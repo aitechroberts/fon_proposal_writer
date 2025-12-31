@@ -10,7 +10,6 @@ import {
   Paper,
   Badge,
   ActionIcon,
-  Progress,
   Skeleton,
 } from '@mantine/core';
 import { Dropzone, FileWithPath, MIME_TYPES } from '@mantine/dropzone';
@@ -38,8 +37,8 @@ const ACCEPTED_MIME_TYPES = [
 function getFileIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase();
   if (ext === 'pdf') return <IconFileTypePdf size={18} color="var(--mantine-color-red-5)" />;
-  if (['doc', 'docx'].includes(ext || '')) return <IconFileTypeDocx size={18} color="var(--mantine-color-blue-5)" />;
-  if (['xls', 'xlsx'].includes(ext || '')) return <IconFileSpreadsheet size={18} color="var(--mantine-color-green-5)" />;
+  if (['doc', 'docx'].includes(ext || '')) return <IconFileTypeDocx size={18} color="var(--mantine-color-fonBlue-5)" />;
+  if (['xls', 'xlsx'].includes(ext || '')) return <IconFileSpreadsheet size={18} color="var(--mantine-color-teal-5)" />;
   return <IconFile size={18} />;
 }
 
@@ -118,7 +117,7 @@ export function FileUpload() {
       >
         <Group justify="center" gap="lg" mih={100} style={{ pointerEvents: 'none' }}>
           <Dropzone.Accept>
-            <IconUpload size={40} stroke={1.5} color="var(--mantine-color-cyan-5)" />
+            <IconUpload size={40} stroke={1.5} color="var(--mantine-color-fonBlue-5)" />
           </Dropzone.Accept>
           <Dropzone.Reject>
             <IconX size={40} stroke={1.5} color="var(--mantine-color-red-5)" />
@@ -127,17 +126,17 @@ export function FileUpload() {
             {isUploaded ? (
               <IconCheck size={40} stroke={1.5} color="var(--mantine-color-teal-5)" />
             ) : (
-              <IconCloudUpload size={40} stroke={1.5} color="var(--mantine-color-dimmed)" />
+              <IconCloudUpload size={40} stroke={1.5} color="var(--mantine-color-charcoal-4)" />
             )}
           </Dropzone.Idle>
 
           <Box>
-            <Text size="sm" fw={500}>
+            <Text size="sm" fw={500} c="charcoal.7">
               {isUploaded
                 ? 'Files uploaded successfully'
                 : 'Drag documents here or click to browse'}
             </Text>
-            <Text size="xs" c="dimmed" mt={4}>
+            <Text size="xs" c="charcoal.5" mt={4}>
               {isUploaded
                 ? `${blobUrls.length} file(s) ready`
                 : 'PDF, Word, Excel supported'}
@@ -149,7 +148,7 @@ export function FileUpload() {
       {files.length > 0 && !isUploaded && (
         <>
           <Paper p="sm" withBorder radius="md">
-            <Text size="xs" fw={500} c="dimmed" mb="xs">
+            <Text size="xs" fw={500} c="charcoal.5" mb="xs">
               Selected ({files.length})
             </Text>
             <Stack gap="xs">
@@ -157,17 +156,17 @@ export function FileUpload() {
                 <Group key={`${file.name}-${index}`} justify="space-between" wrap="nowrap">
                   <Group gap="xs" style={{ overflow: 'hidden', flex: 1 }}>
                     {getFileIcon(file.name)}
-                    <Text size="xs" truncate style={{ flex: 1 }}>
+                    <Text size="xs" truncate style={{ flex: 1 }} c="charcoal.7">
                       {file.name}
                     </Text>
                   </Group>
                   <Group gap="xs" wrap="nowrap">
-                    <Text size="xs" c="dimmed" className="font-mono">
+                    <Text size="xs" c="charcoal.4" className="font-mono">
                       {formatFileSize(file.size)}
                     </Text>
                     <ActionIcon
                       variant="subtle"
-                      color="gray"
+                      color="charcoal"
                       size="xs"
                       onClick={() => removeFile(index)}
                     >
@@ -184,7 +183,7 @@ export function FileUpload() {
             onClick={handleUpload}
             loading={uploadMutation.isPending}
             disabled={files.length === 0}
-            color="cyan"
+            color="fonBlue"
             size="sm"
             fullWidth
           >

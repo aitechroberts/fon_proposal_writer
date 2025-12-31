@@ -132,20 +132,10 @@ st.set_page_config(
 
 def check_backend_health() -> bool:
     """Check if backend API is available."""
-    # #region agent log H6
-    import sys
-    print(f"[DEBUG H6] Checking backend health at: {API_BASE}/health", file=sys.stderr, flush=True)
-    # #endregion
     try:
         response = requests.get(f"{API_BASE}/health", timeout=35)
-        # #region agent log H6
-        print(f"[DEBUG H6] Health response: status={response.status_code}, body={response.text[:200] if response.text else 'empty'}", file=sys.stderr, flush=True)
-        # #endregion
         return response.status_code == 200
     except Exception as e:
-        # #region agent log H6
-        print(f"[DEBUG H6] Health check ERROR: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        # #endregion
         log.error(f"Backend health check failed: {e}")
         return False
 

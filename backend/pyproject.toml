@@ -1,6 +1,6 @@
 [project]
 name = "fon-proposal-writer-backend"
-version = "1.0.0"
+version = "2.0.0"
 description = "FON Proposal Writer - RFP compliance extraction and proposal generation backend"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -28,6 +28,11 @@ dependencies = [
     # Azure services
     "azure-storage-blob>=12,<13",
     "azure-ai-documentintelligence>=1.0.0",
+    
+    # PostgreSQL database
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",
+    "greenlet>=3.0.0",
     
     # FastAPI backend
     "fastapi>=0.115.0",

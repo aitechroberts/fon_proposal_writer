@@ -30,7 +30,8 @@ class JobResult(BaseModel):
     job_id: str
     status: JobStatus
     requirements_sas_url: Optional[str] = Field(None, description="SAS URL for downloading requirements matrix (Excel)")
-    proposal_sas_url: Optional[str] = Field(None, description="SAS URL for downloading proposal document (Word)")
+    clean_proposal_sas_url: Optional[str] = Field(None, description="SAS URL for downloading clean proposal (citations removed)")
+    cited_proposal_sas_url: Optional[str] = Field(None, description="SAS URL for downloading cited proposal (with citations)")
     zip_sas_url: Optional[str] = Field(None, description="SAS URL for downloading all outputs as a ZIP")
     file_count: Optional[int] = Field(None, description="Number of requirements extracted")
     error_message: Optional[str] = Field(None, description="Error message if failed")
@@ -41,3 +42,24 @@ class HealthResponse(BaseModel):
     status: str = "healthy"
     timestamp: datetime
     version: str = "1.0.0"
+
+# Models for Previous Jobs endpoint
+class JobListItem(BaseModel):
+    """Single job in the jobs list."""
+    id: str
+    job_name: str
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    requirements_sas_url: Optional[str] = None
+    clean_proposal_sas_url: Optional[str] = None
+    cited_proposal_sas_url: Optional[str] = None
+    zip_sas_url: Optional[str] = None
+    file_count: int = 0
+
+class JobListResponse(BaseModel):
+    """Paginated list of completed jobs."""
+    jobs: List[JobListItem]
+    total: int
+    page: int
+    limit: int
+    total_pages: int

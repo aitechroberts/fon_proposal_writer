@@ -6,6 +6,7 @@ import './globals.css';
 import { ColorSchemeScript } from '@mantine/core';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers';
+import { Navigation } from '@/components';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -15,7 +16,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: 'RFP Compliance Matrix Generator',
+  title: 'FON Advisors Proposal Writer',
   description: 'Transform government RFPs into compliance matrices with AI-powered extraction',
   icons: {
     icon: '/favicon.ico',
@@ -33,9 +34,11 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Navigation />
+          {children}
+        </Providers>
       </body>
     </html>
   );
 }
-

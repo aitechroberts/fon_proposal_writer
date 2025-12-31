@@ -1,12 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   Card,
   Text,
   Progress,
   Stack,
   Group,
-  Badge,
   Box,
   ThemeIcon,
   RingProgress,
@@ -15,10 +15,9 @@ import {
 } from '@mantine/core';
 import {
   IconClock,
-  IconPlayerPlay,
+  IconLoader2,
   IconCheck,
   IconX,
-  IconLoader2,
   IconChartBar,
 } from '@tabler/icons-react';
 import { useJobStatus, useJobResults, useJobHistory } from '@/hooks';
@@ -42,7 +41,7 @@ function getStatusIcon(status: string) {
 function getStatusColor(status: string) {
   switch (status) {
     case 'queued':
-      return 'blue';
+      return 'fonBlue';
     case 'running':
       return 'orange';
     case 'completed':
@@ -87,11 +86,19 @@ function JobStatusSkeleton() {
 
 export function JobStatus() {
   const { currentJobId, updateJobStatus } = useJobHistory();
-  const { data: statusData, isLoading } = useJobStatus(currentJobId);
-  const { data: resultsData } = useJobResults(
+  const { data: statusData, isLoading, error: statusError } = useJobStatus(currentJobId);
+  const { data: resultsData, error: resultsError } = useJobResults(
     currentJobId,
     statusData?.status === 'completed'
   );
+
+  // Update job history when status changes - MUST be in useEffect to avoid infinite loop
+  // This must be BEFORE any early returns to satisfy React hooks rules
+  useEffect(() => {
+    if (statusData && currentJobId) {
+      updateJobStatus(currentJobId, statusData.status);
+    }
+  }, [currentJobId, statusData, updateJobStatus]);
 
   if (!currentJobId) return null;
 
@@ -99,17 +106,12 @@ export function JobStatus() {
   const progress = statusData?.progress || 0;
   const message = statusData?.message || 'Initializing...';
 
-  // Update job history when status changes
-  if (statusData) {
-    updateJobStatus(currentJobId, statusData.status);
-  }
-
   return (
     <Card padding="lg">
       <Card.Section withBorder inheritPadding py="sm">
         <Group gap="xs">
-          <IconChartBar size={18} color="var(--mantine-color-cyan-6)" />
-          <Text fw={600} size="sm" c="navy.7">
+          <IconChartBar size={18} color="var(--mantine-color-fonBlue-5)" />
+          <Text fw={600} size="sm" c="charcoal.7">
             Job Status
           </Text>
         </Group>
@@ -137,11 +139,11 @@ export function JobStatus() {
                 >
                   {getStatusIcon(status)}
                 </ThemeIcon>
-                <Text size="md" fw={600} tt="capitalize">
+                <Text size="md" fw={600} tt="capitalize" c="charcoal.7">
                   {status}
                 </Text>
               </Group>
-              <Text size="xs" mt="xs" c="dimmed" ta="center">
+              <Text size="xs" mt="xs" c="charcoal.5" ta="center">
                 {message}
               </Text>
             </Box>
@@ -157,7 +159,7 @@ export function JobStatus() {
                     sections={[{ value: progress, color: getStatusColor(status) }]}
                     label={
                       <Center>
-                        <Text size="sm" fw={600} className="font-mono">
+                        <Text size="sm" fw={600} className="font-mono" c="charcoal.7">
                           {Math.round(progress)}%
                         </Text>
                       </Center>
@@ -176,10 +178,10 @@ export function JobStatus() {
 
             {/* Job ID */}
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="charcoal.5">
                 Job ID
               </Text>
-              <Text size="xs" className="font-mono" c="dimmed">
+              <Text size="xs" className="font-mono" c="charcoal.4">
                 {currentJobId.slice(0, 8)}...
               </Text>
             </Group>

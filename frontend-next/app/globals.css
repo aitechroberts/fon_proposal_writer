@@ -3,18 +3,21 @@
 @import '@mantine/notifications/styles.css';
 
 :root {
-  /* Brand colors - slightly desaturated for modern tech feel */
-  --brand-navy: #04395E;
-  --brand-navy-600: #0A2E4D;
-  --brand-cyan: #0ea5e9;  /* More muted, Tailwind sky-500 */
-  --brand-cyan-100: #f0f9ff;
+  /* FON Advisors brand colors - CSS fallbacks */
+  --fon-blue: #3332FF;
+  --fon-blue-light: #6766FF;
+  --fon-blue-lighter: #F0F0FF;
+  --fon-blue-dark: #2928cc;
+  --fon-charcoal: #323332;
+  --fon-charcoal-light: #646564;
+  --fon-charcoal-lighter: #8C8C8C;
   
   /* Neutral palette */
-  --bg-primary: #f8fafc;
-  --bg-dots: #e2e8f0;
-  --border-subtle: #e2e8f0;
-  --text-primary: #0f172a;
-  --text-muted: #64748b;
+  --bg-primary: #F7F7F7;
+  --bg-dots: #E8E8E8;
+  --border-subtle: #D1D1D1;
+  --text-primary: #323332;
+  --text-muted: #8C8C8C;
 }
 
 * {
@@ -27,13 +30,13 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  /* Modern dot pattern background - Novu/Linear style */
+  /* Modern dot pattern background using charcoal tones */
   background-color: var(--bg-primary);
   background-image: radial-gradient(var(--bg-dots) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar using brand colors */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -49,7 +52,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  background: var(--fon-charcoal-lighter);
 }
 
 /* Global transitions */
@@ -64,13 +67,19 @@ body {
 
 .hover-lift:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(50, 51, 50, 0.1);
 }
 
-/* Status indicators - modernized with left accent */
+/* Navigation link hover */
+.nav-link-hover:hover {
+  background: var(--fon-blue-lighter) !important;
+  color: var(--fon-blue) !important;
+}
+
+/* Status indicators - FON Advisors themed */
 .status-queued {
-  border-left: 3px solid #3b82f6;
-  background: #eff6ff;
+  border-left: 3px solid var(--fon-blue);
+  background: var(--fon-blue-lighter);
 }
 
 .status-running {
@@ -130,8 +139,53 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* Focus ring for accessibility */
+/* Focus ring for accessibility - uses brand blue */
 .focus-ring:focus-visible {
-  outline: 2px solid var(--brand-cyan);
+  outline: 2px solid var(--fon-blue);
   outline-offset: 2px;
+}
+
+/* Table styles */
+.mantine-Table-th {
+  color: var(--fon-charcoal) !important;
+}
+
+/* Button primary override for consistent branding */
+.mantine-Button-root[data-variant="filled"] {
+  transition: all 0.15s ease;
+}
+
+.mantine-Button-root[data-variant="filled"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(51, 50, 255, 0.25);
+}
+
+/* Light button variant with brand colors */
+.mantine-Button-root[data-variant="light"] {
+  transition: all 0.15s ease;
+}
+
+/* Badge styling */
+.mantine-Badge-root {
+  transition: all 0.15s ease;
+}
+
+/* Card hover effect */
+.mantine-Card-root:hover {
+  box-shadow: 0 4px 12px rgba(50, 51, 50, 0.08);
+}
+
+/* Input focus styling */
+.mantine-Input-input:focus {
+  border-color: var(--fon-blue) !important;
+}
+
+/* Progress bar gradient effect */
+.mantine-Progress-section {
+  transition: width 0.3s ease;
+}
+
+/* Pagination active state */
+.mantine-Pagination-control[data-active] {
+  background-color: var(--fon-blue) !important;
 }

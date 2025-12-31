@@ -35,7 +35,8 @@ export interface JobResultsResponse {
   status: JobStatus;
   file_count: number;
   requirements_sas_url?: string;
-  proposal_sas_url?: string;
+  clean_proposal_sas_url?: string;
+  cited_proposal_sas_url?: string;
   zip_sas_url?: string;
   error_message?: string;
 }

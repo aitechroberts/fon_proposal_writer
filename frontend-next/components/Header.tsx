@@ -12,12 +12,11 @@ export function Header() {
     <Box mb="xl" pt="xs">
       <Group justify="space-between" align="center">
         <Group gap="md">
-          {/* Logo mark with gradient accent */}
+          {/* Logo mark with FON Advisors blue */}
           <ThemeIcon
             size={44}
             radius="md"
-            variant="gradient"
-            gradient={{ from: 'navy.6', to: 'cyan.5', deg: 135 }}
+            color="fonBlue"
           >
             <IconFileAnalytics size={24} stroke={1.5} />
           </ThemeIcon>
@@ -26,12 +25,12 @@ export function Header() {
             <Text
               size="xl"
               fw={700}
-              c="navy.7"
+              c="charcoal.7"
               style={{ letterSpacing: '-0.5px', lineHeight: 1.2 }}
             >
               Proposal Writer
             </Text>
-            <Text size="sm" c="dimmed">
+            <Text size="sm" c="charcoal.5">
               Compliance Matrix Generator
             </Text>
           </Box>

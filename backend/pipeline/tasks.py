@@ -17,26 +17,6 @@ from config import settings
 
 log = logging.getLogger(__name__)
 
-# #region agent log helper
-def _agent_log(hyp: str, loc: str, msg: str, data: Dict[str, Any] | None = None):
-    """Structured NDJSON debug log for debug mode."""
-    try:
-        p = Path("/root/fon_proposal_writer/.cursor/debug.log")
-        p.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": hyp,
-            "location": loc,
-            "message": msg,
-            "data": data or {},
-            "timestamp": __import__("time").time(),
-        }
-        p.write_text(p.read_text() + __import__("json").dumps(payload) + "\n") if p.exists() else p.write_text(__import__("json").dumps(payload) + "\n")
-    except Exception:
-        pass
-# #endregion
-
 
 def _blob_account_parts() -> Dict[str, str]:
     """Parse Azure storage connection string into parts."""
@@ -56,18 +36,23 @@ def _safe_file_base(custom_filename: Optional[str], opportunity_id: str, job_id:
     return file_base_name or job_id
 
 
+def _generate_sas_url(account_name: str, account_key: str, blob_name: str) -> str:
+    """Generate a SAS URL for a blob with 24-hour expiry."""
+    sas = generate_blob_sas(
+        account_name=account_name,
+        container_name=settings.azure_blob_container,
+        blob_name=blob_name,
+        account_key=account_key,
+        permission=BlobSasPermissions(read=True),
+        expiry=datetime.utcnow() + timedelta(hours=24),
+    )
+    return f"https://{account_name}.blob.core.windows.net/{settings.azure_blob_container}/{blob_name}?{sas}"
+
+
 def download_files_task(blob_urls: List[str], job_id: str) -> List[Path]:
     """Download files from Azure Blob Storage to local temp directory."""
     if not blob_urls:
         log.warning(f"No blob URLs provided for job {job_id}")
-        # #region agent log H1
-        _agent_log(
-            "H1",
-            "backend/pipeline/tasks.py:download_files_task:no_urls",
-            "No blob URLs provided",
-            {"job_id": job_id},
-        )
-        # #endregion
         return []
     
     temp_dir = Path(tempfile.mkdtemp(prefix=f"job_{job_id}_"))
@@ -77,19 +62,6 @@ def download_files_task(blob_urls: List[str], job_id: str) -> List[Path]:
         settings.azure_storage_connection_string
     )
     container_name = settings.azure_blob_container
-    # #region agent log H1
-    _agent_log(
-        "H1",
-        "backend/pipeline/tasks.py:download_files_task:start",
-        "Download start",
-        {
-            "job_id": job_id,
-            "blob_url_count": len(blob_urls),
-            "container": container_name,
-            "has_conn_string": bool(settings.azure_storage_connection_string),
-        },
-    )
-    # #endregion
     
     for i, blob_url in enumerate(blob_urls):
         try:
@@ -127,25 +99,9 @@ def download_files_task(blob_urls: List[str], job_id: str) -> List[Path]:
             
         except Exception as e:
             log.error(f"Failed to download {blob_url} for job {job_id}: {e}")
-            # #region agent log H1
-            _agent_log(
-                "H1",
-                "backend/pipeline/tasks.py:download_files_task:error",
-                "Download failed",
-                {"job_id": job_id, "blob_url": blob_url, "error": str(e)},
-            )
-            # #endregion
             continue
     
     log.info(f"Downloaded {len(downloaded_files)} files for job {job_id}")
-    # #region agent log H1
-    _agent_log(
-        "H1",
-        "backend/pipeline/tasks.py:download_files_task:complete",
-        "Download complete",
-        {"job_id": job_id, "downloaded_files": len(downloaded_files)},
-    )
-    # #endregion
     return downloaded_files
 
 
@@ -159,41 +115,13 @@ def run_dspy_pipeline_task(opportunity_id: str, input_files: List[Path]) -> List
     from main import run_dspy_pipeline
     
     log.info(f"Starting DSPy pipeline for {len(input_files)} files")
-    # #region agent log H2
-    _agent_log(
-        "H2",
-        "backend/pipeline/tasks.py:run_dspy_pipeline_task:start",
-        "DSPy pipeline start",
-        {
-            "opportunity_id": opportunity_id,
-            "input_files": len(input_files),
-            "azure_openai_configured": bool(settings.azure_api_base and settings.azure_openai_deployment),
-        },
-    )
-    # #endregion
     
     try:
         results = run_dspy_pipeline(opportunity_id, input_files)
         log.info(f"DSPy pipeline completed: {len(results)} requirements extracted")
-        # #region agent log H2
-        _agent_log(
-            "H2",
-            "backend/pipeline/tasks.py:run_dspy_pipeline_task:complete",
-            "DSPy pipeline complete",
-            {"results": len(results)},
-        )
-        # #endregion
         return results
     except Exception as e:
         log.error(f"DSPy pipeline failed: {e}")
-        # #region agent log H2
-        _agent_log(
-            "H2",
-            "backend/pipeline/tasks.py:run_dspy_pipeline_task:error",
-            "DSPy pipeline error",
-            {"opportunity_id": opportunity_id, "error": str(e)},
-        )
-        # #endregion
         raise
 
 
@@ -203,13 +131,26 @@ def generate_and_upload_task(
     opportunity_id: str,
     custom_filename: str = None
 ) -> Dict[str, Any]:
-    """Generate Excel/JSON/CSV outputs, upload XLSX, and keep local paths for zipping."""
+    """
+    Generate Excel/JSON/CSV outputs, upload XLSX, and keep local paths for zipping.
+    
+    IMPORTANT: Renumbers requirement IDs to sequential 1-N before export.
+    """
     if not requirements:
         log.warning(f"No requirements to process for job {job_id}")
         return {"requirements_sas_url": "", "file_count": 0, "local_paths": {}}
 
     from main import _save_json, _save_csv
     from src.matrix.export_excel import save_excel
+
+    # ============================================================
+    # RENUMBER REQUIREMENT IDs TO SEQUENTIAL 1-N
+    # This replaces LLM-generated IDs with clean sequential numbers
+    # ============================================================
+    for idx, req in enumerate(requirements, start=1):
+        req["id"] = str(idx)
+    
+    log.info(f"Renumbered {len(requirements)} requirements to IDs 1-{len(requirements)}")
 
     output_dir = Path("outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -239,15 +180,7 @@ def generate_and_upload_task(
     if not account_name or not account_key:
         raise RuntimeError("AZURE_STORAGE_CONNECTION_STRING missing AccountName/AccountKey.")
 
-    sas = generate_blob_sas(
-        account_name=account_name,
-        container_name=settings.azure_blob_container,
-        blob_name=final_xlsx.name,
-        account_key=account_key,
-        permission=BlobSasPermissions(read=True),
-        expiry=datetime.utcnow() + timedelta(hours=24),
-    )
-    requirements_sas_url = f"https://{account_name}.blob.core.windows.net/{settings.azure_blob_container}/{final_xlsx.name}?{sas}"
+    requirements_sas_url = _generate_sas_url(account_name, account_key, final_xlsx.name)
 
     log.info(f"Uploaded results for job {job_id}: {requirements_sas_url}")
 
@@ -270,7 +203,11 @@ def generate_proposal_task(
     use_two_stage: bool = False
 ) -> Dict[str, Any]:
     """
-    Generate proposal document from extracted requirements.
+    Generate proposal documents from extracted requirements.
+    
+    Generates TWO Word documents:
+    - Cited proposal: Original with citations in [brackets]
+    - Clean proposal: Citations removed for final submission
     
     Args:
         requirements: List of extracted requirement dicts
@@ -280,14 +217,23 @@ def generate_proposal_task(
         use_two_stage: Whether to use two-stage DSPy writer (default: single-pass)
         
     Returns:
-        Dict with SAS URL and local paths for the generated Word document
+        Dict with SAS URLs and local paths for both proposal documents
     """
     if not requirements:
         log.warning(f"No requirements for proposal generation in job {job_id}")
-        return {"proposal_sas_url": "", "local_path": ""}
+        return {
+            "clean_proposal_sas_url": "",
+            "cited_proposal_sas_url": "",
+            "clean_proposal_path": "",
+            "cited_proposal_path": "",
+        }
     
     from src.proposal.modules import run_proposal_pipeline
-    from src.proposal.export_word import export_proposal_to_word, sections_to_text
+    from src.proposal.export_word import (
+        export_proposal_to_word,
+        export_clean_proposal_to_word,
+        sections_to_text
+    )
     
     log.info(f"Starting proposal generation for {len(requirements)} requirements")
     
@@ -300,36 +246,58 @@ def generate_proposal_task(
         output_dir.mkdir(parents=True, exist_ok=True)
         
         file_base_name = _safe_file_base(custom_filename, opportunity_id, job_id)
+        title = f"Technical Proposal - {opportunity_id or 'Response'}"
         
-        # Save as text (intermediate)
-        text_path = output_dir / f"{file_base_name}.proposal.txt"
+        # Save as text (intermediate - for debugging)
+        text_path = output_dir / f"{file_base_name}_proposal.txt"
         text_content = sections_to_text(sections)
         text_path.write_text(text_content, encoding="utf-8")
         log.info(f"Saved intermediate text: {text_path}")
         
-        # Export to Word document
-        docx_path = output_dir / f"{file_base_name}.proposal.docx"
+        # ============================================================
+        # GENERATE CITED PROPOSAL (with citations in [brackets])
+        # ============================================================
+        cited_docx_path = output_dir / f"{file_base_name}_proposal_cited.docx"
         export_proposal_to_word(
             sections=sections,
-            path=docx_path,
-            title=f"Technical Proposal - {opportunity_id or 'Response'}"
+            path=cited_docx_path,
+            title=title
         )
-        log.info(f"Generated Word document: {docx_path}")
+        log.info(f"Generated cited proposal: {cited_docx_path}")
         
-        # Upload to Azure Blob Storage
+        # ============================================================
+        # GENERATE PROPOSAL (citations removed for final submission)
+        # ============================================================
+        clean_docx_path = output_dir / f"{file_base_name}_proposal.docx"
+        export_clean_proposal_to_word(
+            sections=sections,
+            path=clean_docx_path,
+            title=title
+        )
+        log.info(f"Generated proposal: {clean_docx_path}")
+        
+        # Upload both to Azure Blob Storage
         blob_service = BlobServiceClient.from_connection_string(
             settings.azure_storage_connection_string
         )
         
-        blob_client = blob_service.get_blob_client(
+        # Upload cited proposal
+        blob_client_cited = blob_service.get_blob_client(
             container=settings.azure_blob_container,
-            blob=docx_path.name
+            blob=cited_docx_path.name
         )
+        with open(cited_docx_path, "rb") as f:
+            blob_client_cited.upload_blob(f, overwrite=True)
         
-        with open(docx_path, "rb") as f:
-            blob_client.upload_blob(f, overwrite=True)
+        # Upload clean proposal
+        blob_client_clean = blob_service.get_blob_client(
+            container=settings.azure_blob_container,
+            blob=clean_docx_path.name
+        )
+        with open(clean_docx_path, "rb") as f:
+            blob_client_clean.upload_blob(f, overwrite=True)
         
-        # Generate SAS URL for download
+        # Generate SAS URLs for both
         parts = _blob_account_parts()
         account_name = parts.get("AccountName")
         account_key = parts.get("AccountKey")
@@ -337,22 +305,16 @@ def generate_proposal_task(
         if not account_name or not account_key:
             raise RuntimeError("AZURE_STORAGE_CONNECTION_STRING missing AccountName/AccountKey.")
         
-        sas = generate_blob_sas(
-            account_name=account_name,
-            container_name=settings.azure_blob_container,
-            blob_name=docx_path.name,
-            account_key=account_key,
-            permission=BlobSasPermissions(read=True),
-            expiry=datetime.utcnow() + timedelta(hours=24),
-        )
+        cited_sas_url = _generate_sas_url(account_name, account_key, cited_docx_path.name)
+        clean_sas_url = _generate_sas_url(account_name, account_key, clean_docx_path.name)
         
-        sas_url = f"https://{account_name}.blob.core.windows.net/{settings.azure_blob_container}/{docx_path.name}?{sas}"
-        
-        log.info(f"Uploaded proposal for job {job_id}: {sas_url}")
+        log.info(f"Uploaded proposals for job {job_id}")
         
         return {
-            "proposal_sas_url": sas_url,
-            "local_path": str(docx_path),
+            "clean_proposal_sas_url": clean_sas_url,
+            "cited_proposal_sas_url": cited_sas_url,
+            "clean_proposal_path": str(clean_docx_path),
+            "cited_proposal_path": str(cited_docx_path),
             "text_path": str(text_path),
         }
         
@@ -363,12 +325,20 @@ def generate_proposal_task(
 
 def zip_outputs_task(
     matrix_paths: Dict[str, str],
-    proposal_path: Optional[str],
+    clean_proposal_path: Optional[str],
+    cited_proposal_path: Optional[str],
     job_id: str,
     opportunity_id: str,
     custom_filename: Optional[str] = None,
 ) -> str:
-    """Zip all generated outputs and upload to Azure Blob Storage."""
+    """
+    Zip all generated outputs and upload to Azure Blob Storage.
+    
+    Includes:
+    - Compliance matrix (xlsx, csv, json)
+    - Clean proposal (docx)
+    - Cited proposal (docx)
+    """
     file_base_name = _safe_file_base(custom_filename, opportunity_id, job_id)
     output_dir = Path("outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -380,8 +350,12 @@ def zip_outputs_task(
     for p in matrix_paths.values():
         if p and Path(p).exists():
             files_to_zip.append(Path(p))
-    if proposal_path and Path(proposal_path).exists():
-        files_to_zip.append(Path(proposal_path))
+    
+    # Add both proposal files
+    if clean_proposal_path and Path(clean_proposal_path).exists():
+        files_to_zip.append(Path(clean_proposal_path))
+    if cited_proposal_path and Path(cited_proposal_path).exists():
+        files_to_zip.append(Path(cited_proposal_path))
 
     if not files_to_zip:
         log.warning(f"No files to zip for job {job_id}")
@@ -390,6 +364,8 @@ def zip_outputs_task(
     with ZipFile(zip_path, "w") as zf:
         for file_path in files_to_zip:
             zf.write(file_path, arcname=file_path.name)
+
+    log.info(f"Created ZIP with {len(files_to_zip)} files for job {job_id}")
 
     # Upload ZIP to Azure Blob
     blob_service = BlobServiceClient.from_connection_string(settings.azure_storage_connection_string)
@@ -407,15 +383,7 @@ def zip_outputs_task(
     if not account_name or not account_key:
         raise RuntimeError("AZURE_STORAGE_CONNECTION_STRING missing AccountName/AccountKey.")
 
-    sas = generate_blob_sas(
-        account_name=account_name,
-        container_name=settings.azure_blob_container,
-        blob_name=zip_path.name,
-        account_key=account_key,
-        permission=BlobSasPermissions(read=True),
-        expiry=datetime.utcnow() + timedelta(hours=24),
-    )
-    zip_sas_url = f"https://{account_name}.blob.core.windows.net/{settings.azure_blob_container}/{zip_path.name}?{sas}"
+    zip_sas_url = _generate_sas_url(account_name, account_key, zip_path.name)
 
     log.info(f"Uploaded ZIP for job {job_id}: {zip_sas_url}")
 
@@ -427,4 +395,3 @@ def zip_outputs_task(
             log.warning(f"Failed to cleanup file {file_path}: {e}")
 
     return zip_sas_url
-

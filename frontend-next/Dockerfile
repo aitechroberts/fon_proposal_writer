@@ -2,6 +2,10 @@
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
+# Build-time argument for backend API URL (required for NEXT_PUBLIC_* vars)
+ARG NEXT_PUBLIC_BACKEND_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_BACKEND_API_URL=$NEXT_PUBLIC_BACKEND_API_URL
+
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 

@@ -1,4 +1,4 @@
-# app/src/proposal/export_word.py
+# backend/src/proposal/export_word.py
 """
 Word document export utility for proposal generation.
 
@@ -7,11 +7,16 @@ Exports proposal sections to a properly formatted Word document with:
 - Section headings (category names) in Heading 2 style
 - Content in Normal style with 12pt Times New Roman font
 - Proper newline separators between sections
+
+Supports two output modes:
+- Cited proposal: Original with citations in [brackets]
+- Clean proposal: Citations removed using regex
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Union
 
@@ -23,6 +28,38 @@ from docx.enum.style import WD_STYLE_TYPE
 logger = logging.getLogger(__name__)
 
 PathLike = Union[str, Path]
+
+
+def strip_citations(text: str) -> str:
+    """
+    Remove all bracketed citations from text.
+    
+    Citations are text within square brackets, e.g., [Section 3.2] or [Page 5].
+    This function removes them for clean proposal output.
+    
+    Args:
+        text: Input text potentially containing citations
+        
+    Returns:
+        Text with all [...] citations removed
+        
+    Examples:
+        >>> strip_citations("We will comply [Section 3.2] with requirements.")
+        "We will comply  with requirements."
+        >>> strip_citations("The approach [Page 5] ensures [Ref 1] success.")
+        "The approach  ensures  success."
+    """
+    if not text:
+        return text
+    
+    # Remove all content within square brackets, including the brackets
+    # Pattern matches [...] where ... can be any characters except newlines
+    cleaned = re.sub(r'\[[^\]]*\]', '', text)
+    
+    # Clean up any double spaces that may result from removal
+    cleaned = re.sub(r'  +', ' ', cleaned)
+    
+    return cleaned.strip()
 
 
 def _configure_normal_style(doc: Document) -> None:
@@ -128,6 +165,86 @@ def export_proposal_to_word(
     doc.save(out_path)
     
     logger.info(f"Proposal exported successfully: {len(sections)} sections")
+    return out_path
+
+
+def export_clean_proposal_to_word(
+    sections: List[Dict[str, Any]],
+    path: PathLike,
+    title: str = "Technical Proposal"
+) -> Path:
+    """
+    Export proposal sections to a Word document with citations removed.
+    
+    This is the "clean" version of the proposal suitable for final submission.
+    All text within square brackets [like this] is removed.
+    
+    Args:
+        sections: List of section dicts with keys:
+            - part: Part name (e.g., "Part 1: The Promise (BLUF)")
+            - category: Category name (e.g., "Technical Approach & Capability")
+            - content: Section content text (may contain citations)
+        path: Output file path
+        title: Optional document title for header
+        
+    Returns:
+        Path to the generated Word document
+    """
+    out_path = Path(path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    logger.info(f"Exporting clean proposal (citations removed) to Word: {out_path}")
+    
+    # Create document
+    doc = Document()
+    
+    # Configure styles
+    _configure_normal_style(doc)
+    _configure_heading_styles(doc)
+    
+    # Add title
+    title_para = doc.add_heading(title, level=0)
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Track current part to add part headings
+    current_part = None
+    
+    for section in sections:
+        part = section.get("part", "")
+        category = section.get("category", "Unknown Section")
+        content = section.get("content", "")
+        
+        # Add part heading if changed
+        if part and part != current_part:
+            doc.add_heading(part, level=1)
+            current_part = part
+        
+        # Add section heading (category name)
+        doc.add_heading(category, level=2)
+        
+        # Add content WITH CITATIONS STRIPPED
+        if content:
+            # Remove citations from content
+            clean_content = strip_citations(content)
+            
+            # Split content into paragraphs and add each
+            paragraphs = clean_content.split("\n\n")
+            for para_text in paragraphs:
+                para_text = para_text.strip()
+                if para_text:
+                    # Handle single newlines within paragraphs
+                    para_text = para_text.replace("\n", " ")
+                    para = doc.add_paragraph(para_text)
+                    para.style = doc.styles["Normal"]
+        else:
+            # Add placeholder if no content
+            para = doc.add_paragraph("[Content to be developed]")
+            para.style = doc.styles["Normal"]
+    
+    # Save document
+    doc.save(out_path)
+    
+    logger.info(f"Clean proposal exported successfully: {len(sections)} sections")
     return out_path
 
 
@@ -263,4 +380,3 @@ def sections_to_text(sections: List[Dict[str, Any]]) -> str:
         lines.append("")
     
     return "\n".join(lines)
-

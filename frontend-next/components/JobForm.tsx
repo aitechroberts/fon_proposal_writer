@@ -6,7 +6,6 @@ import {
   Text,
   TextInput,
   Switch,
-  SegmentedControl,
   Stack,
   Group,
   Divider,
@@ -15,10 +14,8 @@ import {
   Badge,
 } from '@mantine/core';
 import {
-  IconBuildingBank,
   IconFileUpload,
-  IconKey,
-  IconAlertCircle,
+  IconInfoCircle,
   IconPlus,
   IconFolder,
 } from '@tabler/icons-react';
@@ -36,19 +33,15 @@ interface JobFormProps {
 }
 
 export function JobForm({ onFormChange }: JobFormProps) {
-  const [inputMethod, setInputMethod] = useState<'manual' | 'highergov'>('manual');
   const [opportunityId, setOpportunityId] = useState('');
   const [customFilename, setCustomFilename] = useState('');
   const [generateProposal, setGenerateProposal] = useState(true);
-  const [useTwoStageWriter, setUseTwoStageWriter] = useState(false);
   
-  const { blobUrls } = useJobHistory();
-  const useHighergov = inputMethod === 'highergov';
-
-  // Check if HigherGov API key is available (would be set via env)
-  const hasHighergovKey = typeof window !== 'undefined' 
-    ? false // In production, this would check server-side
-    : false;
+  // HigherGov integration not yet completed - always use manual upload
+  const useHighergov = false;
+  
+  // Two-stage writer not yet implemented - always false
+  const useTwoStageWriter = false;
 
   const handleChange = () => {
     onFormChange({
@@ -67,23 +60,50 @@ export function JobForm({ onFormChange }: JobFormProps) {
         <Card.Section withBorder inheritPadding py="sm">
           <Group justify="space-between">
             <Group gap="xs">
-              <IconPlus size={18} color="var(--mantine-color-cyan-6)" />
-              <Text fw={600} size="sm" c="navy.7">
+              <IconPlus size={18} color="var(--mantine-color-fonBlue-5)" />
+              <Text fw={600} size="sm" c="charcoal.7">
                 Submit New Job
               </Text>
             </Group>
-            <Badge variant="light" color="cyan" size="sm">
+            <Badge variant="light" color="fonBlue" size="sm">
               New
             </Badge>
           </Group>
         </Card.Section>
 
         <Stack gap="md" mt="md">
-          {/* Input Method Toggle */}
+          {/* Input Method - Manual Upload Only */}
           <Box>
-            <Text size="sm" fw={500} mb="xs" c="dimmed">
+            <Text size="sm" fw={500} mb="xs" c="charcoal.5">
               Input method
             </Text>
+            <Alert
+              icon={<IconFileUpload size={16} />}
+              color="fonBlue"
+              variant="light"
+            >
+              <Group gap="xs">
+                <IconFileUpload size={16} />
+                <Text size="sm" fw={500}>Manual File Upload</Text>
+              </Group>
+            </Alert>
+            
+            {/* HigherGov integration notice */}
+            <Alert
+              icon={<IconInfoCircle size={16} />}
+              color="gray"
+              variant="light"
+              mt="xs"
+            >
+              <Text size="xs" c="charcoal.5">
+                HigherGov integration not yet completed. Please use manual upload.
+              </Text>
+            </Alert>
+          </Box>
+
+          {/* 
+            HigherGov Selection - COMMENTED OUT - Not yet implemented
+            
             <SegmentedControl
               value={inputMethod}
               onChange={(value) => {
@@ -111,37 +131,39 @@ export function JobForm({ onFormChange }: JobFormProps) {
                 },
               ]}
               fullWidth
-              color="cyan"
+              color="fonBlue"
             />
-          </Box>
-
-          {useHighergov && !hasHighergovKey && (
-            <Alert
-              icon={<IconAlertCircle size={16} />}
-              title="API Key Required"
-              color="red"
-              variant="light"
-            >
-              HigherGov API key not configured. Contact your administrator.
-            </Alert>
-          )}
+            
+            {useHighergov && !hasHighergovKey && (
+              <Alert
+                icon={<IconAlertCircle size={16} />}
+                title="API Key Required"
+                color="red"
+                variant="light"
+              >
+                HigherGov API key not configured. Contact your administrator.
+              </Alert>
+            )}
+          */}
 
           <Divider />
 
-          {/* Output Settings */}
+          {/* Job Name */}
           <Box>
-            <Text size="sm" fw={500} mb="xs" c="dimmed">
-              Output settings
+            <Text size="sm" fw={500} mb="xs" c="charcoal.5">
+              Job identification
             </Text>
             <TextInput
-              label="Custom filename"
-              placeholder="my-proposal-compliance-matrix"
-              description="Optional name for output files"
+              label="Job Name"
+              placeholder="Enter a name for this job"
+              description="Required - used for output files and tracking"
               value={customFilename}
               onChange={(e) => {
                 setCustomFilename(e.target.value);
                 handleChange();
               }}
+              required
+              error={customFilename.trim() === "" ? undefined : undefined}
             />
           </Box>
 
@@ -149,7 +171,7 @@ export function JobForm({ onFormChange }: JobFormProps) {
 
           {/* Proposal Generation Options */}
           <Box>
-            <Text size="sm" fw={500} mb="sm" c="dimmed">
+            <Text size="sm" fw={500} mb="sm" c="charcoal.5">
               Proposal generation
             </Text>
             <Stack gap="sm">
@@ -161,21 +183,26 @@ export function JobForm({ onFormChange }: JobFormProps) {
                   setGenerateProposal(e.currentTarget.checked);
                   handleChange();
                 }}
-                color="cyan"
+                color="fonBlue"
               />
-              {generateProposal && (
-                <Switch
-                  label="Enhanced two-stage writer"
-                  description="Higher quality output using theme analysis (slower)"
-                  checked={useTwoStageWriter}
-                  onChange={(e) => {
-                    setUseTwoStageWriter(e.currentTarget.checked);
-                    handleChange();
-                  }}
-                  color="cyan"
-                  ml="md"
-                />
-              )}
+              
+              {/* 
+                Two-Stage Writer - COMMENTED OUT - Not yet implemented/tested
+                
+                {generateProposal && (
+                  <Switch
+                    label="Enhanced two-stage writer"
+                    description="Higher quality output using theme analysis (slower)"
+                    checked={useTwoStageWriter}
+                    onChange={(e) => {
+                      setUseTwoStageWriter(e.currentTarget.checked);
+                      handleChange();
+                    }}
+                    color="fonBlue"
+                    ml="md"
+                  />
+                )}
+              */}
             </Stack>
           </Box>
         </Stack>
@@ -185,35 +212,42 @@ export function JobForm({ onFormChange }: JobFormProps) {
       <Card padding="lg">
         <Card.Section withBorder inheritPadding py="sm">
           <Group gap="xs">
-            <IconFolder size={18} color="var(--mantine-color-cyan-6)" />
-            <Text fw={600} size="sm" c="navy.7">
+            <IconFolder size={18} color="var(--mantine-color-fonBlue-5)" />
+            <Text fw={600} size="sm" c="charcoal.7">
               Documents
             </Text>
           </Group>
         </Card.Section>
 
         <Box mt="md">
-          {useHighergov ? (
-            <Stack gap="md">
-              <Text size="sm" c="dimmed">
-                Enter your HigherGov opportunity ID to automatically fetch documents.
-              </Text>
-              <TextInput
-                label="Opportunity ID"
-                placeholder="e.g., abc123xyz or SAM notice ID"
-                description="From HigherGov or SAM.gov"
-                leftSection={<IconKey size={16} />}
-                value={opportunityId}
-                onChange={(e) => {
-                  setOpportunityId(e.target.value);
-                  handleChange();
-                }}
-                disabled={!hasHighergovKey}
-              />
-            </Stack>
-          ) : (
-            <FileUpload />
-          )}
+          {/* Manual upload only - HigherGov integration not yet completed */}
+          <FileUpload />
+          
+          {/* 
+            HigherGov ID Input - COMMENTED OUT - Not yet implemented
+            
+            {useHighergov ? (
+              <Stack gap="md">
+                <Text size="sm" c="charcoal.5">
+                  Enter your HigherGov opportunity ID to automatically fetch documents.
+                </Text>
+                <TextInput
+                  label="Opportunity ID"
+                  placeholder="e.g., abc123xyz or SAM notice ID"
+                  description="From HigherGov or SAM.gov"
+                  leftSection={<IconKey size={16} />}
+                  value={opportunityId}
+                  onChange={(e) => {
+                    setOpportunityId(e.target.value);
+                    handleChange();
+                  }}
+                  disabled={!hasHighergovKey}
+                />
+              </Stack>
+            ) : (
+              <FileUpload />
+            )}
+          */}
         </Box>
       </Card>
     </Stack>

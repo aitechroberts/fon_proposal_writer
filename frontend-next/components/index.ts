@@ -5,4 +5,5 @@ export { JobStatus } from './JobStatus';
 export { JobHistory } from './JobHistory';
 export { ResultsDownload } from './ResultsDownload';
 export { ProcessingCard } from './ProcessingCard';
-
+export { Navigation } from './Navigation';
+export { JobsTable } from './JobsTable';

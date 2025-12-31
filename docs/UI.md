@@ -1,76 +1,280 @@
 ## UI Guidelines and Best Practices
 
-This document summarizes the UI decisions and patterns used in the Streamlit frontend (`frontend/app.py`) and how to extend them safely.
+This document summarizes the UI decisions and patterns used in the Next.js frontend (`frontend-next/`) with Mantine UI components.
 
-### Branding and Theme
-- **Primary palette**: Navy `#04395E`, Navy-600 `#0A2E4D`, Cyan `#00A3E0`, Light Cyan `#E6F6FD`.
-- **Streamlit theme**: Configured in `frontend/.streamlit/config.toml` to align default accents and text with Parker Tide colors.
-- **CSS variables**: Colors are defined as CSS variables for consistency and easy updates.
+---
 
-### Typography
-- **Font stack**: Inter (via Google Fonts) with professional system fallbacks: `Inter, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, Liberation Sans, sans-serif`.
-- **Global application**: Applied to the Streamlit app container and sidebar for consistency.
+## Technology Stack
 
-### Header and Logo
-- **Gradient header**: A brand gradient (navy → cyan) provides a distinctive masthead.
-- **Logo badge**: The logo is wrapped in a semi‑opaque white "badge" with subtle blur to ensure contrast over any background.
-  - Advantages: Works for light/dark logo regions without swapping gradient sides.
-- **Logo sourcing**:
-  - Local (preferred for dev): place `frontend/static/logo.png`.
-  - Or set `COMPANY_LOGO_PATH` (path) / `COMPANY_LOGO_URL` (hosted) env vars.
-  - Local assets are embedded as Base64 data URIs to render reliably in the browser.
+- **Framework**: Next.js 14 (App Router)
+- **UI Library**: Mantine v7
+- **Icons**: Tabler Icons
+- **Styling**: Mantine theme + CSS variables
 
-### Card Structure
-- **Use `st.container(border=True)`** for cards. Avoid raw HTML wrappers that open/close tags across multiple Streamlit calls (can create blank artifacts).
-- **Card headers**: Reusable `.card-header` with brand gradient, white text, and subtle shadow for clear visual grouping.
-  - Font size increased for hierarchy and scannability.
+---
 
-### Inputs and Defaults
-- **Default input method**: Radio defaults to “Manual File Upload” to optimize for the most common path.
-- **Field labeling**: Explicit labels like “Matrix File Name” to clarify purpose.
-- **Help text**: Concise `help=` on interactive widgets to reduce confusion.
+## Branding and Theme
 
-### Upload Experience
-- **Dropzone styling**: Dashed cyan border with light cyan background for strong affordance.
-- **Progress and feedback**: Success messages after file selection and mock upload confirmation for clarity.
+### FON Advisors Brand Colors
 
-### Status and Feedback
-- **Status cards**: `.status-{queued|running|completed|failed}` with distinct colors and left accents.
-- **Processing panel**: Validates inputs and disables submit until ready; uses progress indicators and messages.
+The theme is defined in `frontend-next/theme/theme.ts`:
 
-### Layout
-- **Wide layout** with a 2:1 column split (`col1` for inputs, `col2` for processing/status) to minimize vertical scrolling.
-- **Sidebar** for recent job history without cluttering the main flow.
+| Color | Hex | Usage |
+|-------|-----|-------|
+| **FON Blue** | `#1D5C96` | Primary brand color, navbar background, primary buttons |
+| **Dark Grey** | `#2B2B2B` | Text color, card headers |
 
-### Accessibility and Usability
-- **Contrast**: Navy/white and cyan/white meet contrast expectations for headers and buttons.
-- **Hit targets**: Large buttons and header sizes improve usability.
-- **Icons**: Decorative; text remains the primary label (e.g., ➕ Submit New Job).
+### Color Palettes
 
-### Performance and Safety
-- **Embedded images**: Base64 data URIs reduce path issues and improve reliability in containerized environments.
-- **Minimal custom HTML**: Used sparingly with `unsafe_allow_html=True`; no nested widgets inside raw HTML to avoid interaction issues.
+Both colors have full 10-shade palettes for flexibility:
 
-### Extending the UI
-- To add a new card:
-  1. Create a bordered container.
-  2. Add a `.card-header` title.
-  3. Place widgets inside the same container block.
+**fonBlue palette:**
+- `fonBlue.0` (#ecf4fc) - Light backgrounds
+- `fonBlue.1` (#dceaf8) - Hover backgrounds, subtitle text on blue
+- `fonBlue.6` (#1D5C96) - **Main brand color** (navbar, primary buttons)
+- `fonBlue.7` (#164775) - Button hover states
 
-```python
-with st.container(border=True):
-    st.markdown('<div class="card-header">📂 New Section</div>', unsafe_allow_html=True)
-    # ... widgets ...
+**charcoal palette:**
+- `charcoal.2` (#cdcdcd) - Borders, dividers
+- `charcoal.5` (#7d7d7d) - Muted/secondary text
+- `charcoal.6` (#626262) - **Card headers**, active nav buttons
+- `charcoal.8` (#2B2B2B) - Primary text, headings
+
+### Theme Configuration
+
+```typescript
+// theme/theme.ts
+export const theme = createTheme({
+  primaryColor: 'fonBlue',
+  autoContrast: true,        // Automatically picks white/black text
+  luminanceThreshold: 0.3,   // Threshold for contrast calculation
+  // ...
+});
 ```
 
-### Configuration Quick Reference
-- Theme: `frontend/.streamlit/config.toml`.
-- Logo: `frontend/static/logo.png`, or set `COMPANY_LOGO_PATH` / `COMPANY_LOGO_URL`.
-- Colors/Styles: CSS block in `frontend/app.py` under “Parker Tide brand styling”.
+---
 
-### Rationale Summary
-- Prioritize clarity, contrast, and predictability.
-- Keep Streamlit-native containers for structure; use CSS for polish.
-- Brand consistently through theme, typography, and headers without sacrificing readability.
+## Navigation Bar
 
+Located in `frontend-next/components/Navigation.tsx`.
 
+### Styling
+- **Background**: FON Blue (`fonBlue.5` / #3332FF)
+- **Border**: Slightly darker blue (`fonBlue.6`)
+- **Height**: 64px
+- **Position**: Sticky top
+
+### Logo
+- **File**: `public/FON_Logo.png`
+- **Dimensions**: 160×40px (wide format to show full logo)
+- **Style**: `objectFit: 'contain'` to preserve aspect ratio
+- **Subtitle**: "Proposal Writer" in light blue (`fonBlue.1`)
+
+### Navigation Links
+- **Default state**: White text on transparent background
+- **Active state**: White text on charcoal background (`charcoal.6` / #626262)
+- **Hover state**: Charcoal background with white text
+
+### Mobile
+- White burger menu icon
+- Drawer with logo and navigation links (charcoal text on white background)
+
+---
+
+## Card Components
+
+Cards use Mantine's `Card` component with custom header sections.
+
+### Card Headers
+
+All card headers use consistent styling:
+
+```tsx
+<Card.Section withBorder inheritPadding py="sm" bg="charcoal.6">
+  <Group gap="xs">
+    <IconName size={18} color="white" />
+    <Text fw={600} size="sm" c="white">
+      Header Title
+    </Text>
+  </Group>
+</Card.Section>
+```
+
+- **Background**: Charcoal (`charcoal.6` / #646564)
+- **Text**: White, semi-bold (600)
+- **Icons**: White, 18px
+- **Padding**: Inherited from card + vertical sm
+
+### Card Body
+- White background
+- Charcoal border (`charcoal.2`)
+- Medium shadow
+- Medium border radius
+
+### Cards in Use
+| Component | Header Title |
+|-----------|-------------|
+| `JobForm.tsx` | "Submit New Job", "Documents" |
+| `ProcessingCard.tsx` | "Processing" |
+| `JobStatus.tsx` | "Job Status" |
+
+---
+
+## Buttons
+
+### Primary Buttons
+- **Color**: FON Blue (`fonBlue`)
+- **Text**: White (auto-contrast)
+- **Hover**: Slight lift + blue shadow
+
+```tsx
+<Button color="fonBlue" size="md">
+  Primary Action
+</Button>
+```
+
+### Light Variant
+- **Background**: Light shade of the color
+- **Text**: Color shade
+
+```tsx
+<Button color="fonBlue" variant="light">
+  Secondary Action
+</Button>
+```
+
+### Subtle Variant
+Used for tertiary actions like "New Job" reset.
+
+---
+
+## Typography
+
+### Font Stack
+```css
+font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 
+             Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+```
+
+### Headings
+- **Color**: Charcoal (`charcoal.7`)
+- **Weight**: 600 (semi-bold)
+- **Sizes**: h1: 2rem, h2: 1.5rem, h3: 1.25rem
+
+### Body Text
+- **Primary**: Charcoal (`charcoal.7`)
+- **Muted**: Mid-gray (`charcoal.5`)
+- **Subtle**: Light gray (`charcoal.4`)
+
+---
+
+## Status Indicators
+
+Defined in `frontend-next/app/globals.css`:
+
+| Status | Border Color | Background |
+|--------|-------------|------------|
+| Queued | FON Blue | Light blue (#F0F0FF) |
+| Running | Orange (#f59e0b) | Light orange (#fffbeb) |
+| Completed | Teal (#10b981) | Light teal (#ecfdf5) |
+| Failed | Red (#ef4444) | Light red (#fef2f2) |
+
+---
+
+## Layout
+
+### Page Structure
+- **Container**: `size="xl"` with `py="xl"` padding
+- **Grid**: 7/5 column split (form left, status right) on desktop
+- **Mobile**: Full-width stacked columns
+
+### Background
+- Light gray (`#F7F7F7`) with subtle dot pattern
+- Dot color: `#E8E8E8`, 24px spacing
+
+---
+
+## CSS Variables
+
+Global CSS variables in `frontend-next/app/globals.css`:
+
+```css
+:root {
+  --fon-blue: #1D5C96;
+  --fon-blue-light: #629ddd;
+  --fon-blue-lighter: #ecf4fc;
+  --fon-blue-dark: #164775;
+  --fon-charcoal: #2B2B2B;
+  --fon-charcoal-light: #464646;
+  --fon-charcoal-medium: #626262;
+  --fon-charcoal-lighter: #7d7d7d;
+  
+  --bg-primary: #F7F7F7;
+  --bg-dots: #E8E8E8;
+  --border-subtle: #D1D1D1;
+  --text-primary: #323332;
+  --text-muted: #8C8C8C;
+}
+```
+
+---
+
+## Extending the UI
+
+### Adding a New Card
+
+```tsx
+import { Card, Text, Group } from '@mantine/core';
+import { IconName } from '@tabler/icons-react';
+
+<Card padding="lg">
+  <Card.Section withBorder inheritPadding py="sm" bg="charcoal.6">
+    <Group gap="xs">
+      <IconName size={18} color="white" />
+      <Text fw={600} size="sm" c="white">
+        New Card Title
+      </Text>
+    </Group>
+  </Card.Section>
+
+  <Box mt="md">
+    {/* Card content */}
+  </Box>
+</Card>
+```
+
+### Adding Navigation Links
+
+Edit `navLinks` array in `Navigation.tsx`:
+
+```tsx
+const navLinks = [
+  { href: '/submit', label: 'Submit Jobs', icon: IconFileUpload },
+  { href: '/jobs', label: 'Previous Jobs', icon: IconHistory },
+  { href: '/new-page', label: 'New Page', icon: IconNewIcon },
+];
+```
+
+---
+
+## File Reference
+
+| File | Purpose |
+|------|---------|
+| `theme/theme.ts` | Mantine theme configuration |
+| `app/globals.css` | Global styles, CSS variables |
+| `components/Navigation.tsx` | Top navigation bar |
+| `components/JobForm.tsx` | Job submission form cards |
+| `components/ProcessingCard.tsx` | Submit button card |
+| `components/JobStatus.tsx` | Job progress card |
+| `public/FON_Logo.png` | Company logo (wide format) |
+
+---
+
+## Design Principles
+
+1. **Brand Consistency**: FON Blue for primary actions and navigation; charcoal for structure and headers
+2. **High Contrast**: White text on colored backgrounds; charcoal text on light backgrounds
+3. **Visual Hierarchy**: Card headers create clear sections; subtle shadows add depth
+4. **Responsive**: Mobile-first with drawer navigation and stacked layouts
+5. **Accessible**: Auto-contrast ensures readable text; focus rings for keyboard navigation

@@ -2,36 +2,36 @@
 
 import { createTheme, MantineColorsTuple } from '@mantine/core';
 
-// FON Advisors brand colors
-// Primary Blue: #3332FF
-// Charcoal: #323332
+// FON Advisors brand colors (sampled from logo)
+// Primary Blue: #1D5C96 (at index 6)
+// Dark Grey: #2B2B2B (at index 8)
 
-// Blue (#3332FF) - Primary brand color at shade 5
+// Blue (#1D5C96) - Primary brand color at shade 6
 const fonBlue: MantineColorsTuple = [
-  '#F0F0FF',  // 0 - Lightest (light backgrounds, subtle highlights)
-  '#D4D4FF',  // 1 - Very light (hover backgrounds)
-  '#B8B8FF',  // 2 - Light (selected states, badges)
-  '#9C9CFF',  // 3 - Medium-light
-  '#6766FF',  // 4 - Medium (secondary buttons)
-  '#3332FF',  // 5 - MAIN BRAND COLOR (primary buttons, links)
-  '#2928CC',  // 6 - Slightly darker (button hover)
-  '#1F1E99',  // 7 - Dark (button active/pressed)
-  '#151466',  // 8 - Very dark (dark mode accents)
-  '#0A0A33',  // 9 - Darkest (dark mode text)
+  '#ecf4fc',  // 0 - Very light tint (backgrounds)
+  '#dceaf8',  // 1 - Very light (hover backgrounds)
+  '#bdd8f2',  // 2 - Light (selected states, badges)
+  '#9cc4eb',  // 3 - Medium-light
+  '#7eb1e5',  // 4 - Medium
+  '#629ddd',  // 5 - Medium-dark
+  '#1D5C96',  // 6 - BRAND BASE COLOR (primary buttons, links, navbar)
+  '#164775',  // 7 - Darker shade (button hover)
+  '#0f3254',  // 8 - Dark (button active/pressed)
+  '#081e33',  // 9 - Darkest (dark mode text)
 ];
 
-// Charcoal (#323332) - Neutral/text color at shade 7
+// Dark Grey (#2B2B2B) - Neutral/text color at shade 8
 const charcoal: MantineColorsTuple = [
-  '#F7F7F7',  // 0 - Almost white (light mode backgrounds)
-  '#E8E8E8',  // 1 - Very light gray (card backgrounds)
-  '#D1D1D1',  // 2 - Light gray (borders, dividers)
-  '#BABABA',  // 3 - Medium-light gray
-  '#A3A3A3',  // 4 - Medium gray (muted text)
-  '#8C8C8C',  // 5 - Mid gray (secondary text)
-  '#646564',  // 6 - Dark gray
-  '#323332',  // 7 - MAIN CHARCOAL (primary text, headings)
-  '#232423',  // 8 - Very dark (dark mode backgrounds)
-  '#141514',  // 9 - Almost black (darkest elements)
+  '#f3f3f3',  // 0 - Light grey background
+  '#e7e7e7',  // 1 - Very light gray (card backgrounds)
+  '#cdcdcd',  // 2 - Light gray (borders, dividers)
+  '#b2b2b2',  // 3 - Medium-light gray
+  '#989898',  // 4 - Medium gray (muted text)
+  '#7d7d7d',  // 5 - Mid gray (secondary text)
+  '#626262',  // 6 - Dark gray (nav buttons)
+  '#464646',  // 7 - Darker gray
+  '#2B2B2B',  // 8 - BRAND BASE COLOR (primary text, headings)
+  '#1a1a1a',  // 9 - Almost black (darkest elements)
 ];
 
 export const theme = createTheme({
@@ -39,7 +39,7 @@ export const theme = createTheme({
   primaryColor: 'fonBlue',
   
   // Default text color
-  black: '#323332',
+  black: '#2B2B2B',
   white: '#FFFFFF',
   
   colors: {
@@ -74,11 +74,11 @@ export const theme = createTheme({
   
   // Custom shadows using charcoal for a warmer feel
   shadows: {
-    xs: '0 1px 2px 0 rgba(50, 51, 50, 0.05)',
-    sm: '0 1px 3px 0 rgba(50, 51, 50, 0.1), 0 1px 2px 0 rgba(50, 51, 50, 0.06)',
-    md: '0 4px 6px -1px rgba(50, 51, 50, 0.1), 0 2px 4px -1px rgba(50, 51, 50, 0.06)',
-    lg: '0 10px 15px -3px rgba(50, 51, 50, 0.1), 0 4px 6px -2px rgba(50, 51, 50, 0.05)',
-    xl: '0 20px 25px -5px rgba(50, 51, 50, 0.1), 0 10px 10px -5px rgba(50, 51, 50, 0.04)',
+    xs: '0 1px 2px 0 rgba(43, 43, 43, 0.05)',
+    sm: '0 1px 3px 0 rgba(43, 43, 43, 0.1), 0 1px 2px 0 rgba(43, 43, 43, 0.06)',
+    md: '0 4px 6px -1px rgba(43, 43, 43, 0.1), 0 2px 4px -1px rgba(43, 43, 43, 0.06)',
+    lg: '0 10px 15px -3px rgba(43, 43, 43, 0.1), 0 4px 6px -2px rgba(43, 43, 43, 0.05)',
+    xl: '0 20px 25px -5px rgba(43, 43, 43, 0.1), 0 10px 10px -5px rgba(43, 43, 43, 0.04)',
   },
   
   defaultRadius: 'md',
@@ -86,16 +86,16 @@ export const theme = createTheme({
   // Semantic colors for other states
   other: {
     // Light backgrounds
-    lightBackground: '#F7F7F7',
+    lightBackground: '#f3f3f3',
     cardBackground: '#FFFFFF',
     
     // Dark backgrounds  
-    darkBackground: '#232423',
-    darkCardBackground: '#323332',
+    darkBackground: '#2B2B2B',
+    darkCardBackground: '#464646',
     
     // Accents
-    lightAccent: '#F0F0FF',
-    darkAccent: '#151466',
+    lightAccent: '#ecf4fc',
+    darkAccent: '#0f3254',
   },
   
   components: {

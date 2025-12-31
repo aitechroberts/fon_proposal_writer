@@ -3,21 +3,22 @@
 @import '@mantine/notifications/styles.css';
 
 :root {
-  /* FON Advisors brand colors - CSS fallbacks */
-  --fon-blue: #3332FF;
-  --fon-blue-light: #6766FF;
-  --fon-blue-lighter: #F0F0FF;
-  --fon-blue-dark: #2928cc;
-  --fon-charcoal: #323332;
-  --fon-charcoal-light: #646564;
-  --fon-charcoal-lighter: #8C8C8C;
+  /* FON Advisors brand colors - CSS fallbacks (sampled from logo) */
+  --fon-blue: #1D5C96;
+  --fon-blue-light: #629ddd;
+  --fon-blue-lighter: #ecf4fc;
+  --fon-blue-dark: #164775;
+  --fon-charcoal: #2B2B2B;
+  --fon-charcoal-light: #464646;
+  --fon-charcoal-medium: #626262;
+  --fon-charcoal-lighter: #7d7d7d;
   
   /* Neutral palette */
-  --bg-primary: #F7F7F7;
-  --bg-dots: #E8E8E8;
-  --border-subtle: #D1D1D1;
-  --text-primary: #323332;
-  --text-muted: #8C8C8C;
+  --bg-primary: #f3f3f3;
+  --bg-dots: #e7e7e7;
+  --border-subtle: #cdcdcd;
+  --text-primary: #2B2B2B;
+  --text-muted: #7d7d7d;
 }
 
 * {
@@ -76,10 +77,16 @@ body {
   color: var(--fon-blue) !important;
 }
 
+/* Navigation link hover for blue navbar */
+.nav-link-hover-dark:hover {
+  background: #626262 !important; /* charcoal.6 */
+  color: white !important;
+}
+
 /* Status indicators - FON Advisors themed */
 .status-queued {
   border-left: 3px solid var(--fon-blue);
-  background: var(--fon-blue-lighter);
+  background: #ecf4fc;
 }
 
 .status-running {
@@ -157,7 +164,7 @@ body {
 
 .mantine-Button-root[data-variant="filled"]:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(51, 50, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(29, 92, 150, 0.25);
 }
 
 /* Light button variant with brand colors */

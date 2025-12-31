@@ -57,15 +57,15 @@ export function JobForm({ onFormChange }: JobFormProps) {
     <Stack gap="md">
       {/* Job Submission Card */}
       <Card padding="lg">
-        <Card.Section withBorder inheritPadding py="sm">
+        <Card.Section withBorder inheritPadding py="sm" bg="charcoal.6">
           <Group justify="space-between">
             <Group gap="xs">
-              <IconPlus size={18} color="var(--mantine-color-fonBlue-5)" />
-              <Text fw={600} size="sm" c="charcoal.7">
+              <IconPlus size={18} color="white" />
+              <Text fw={600} size="sm" c="white">
                 Submit New Job
               </Text>
             </Group>
-            <Badge variant="light" color="fonBlue" size="sm">
+            <Badge variant="filled" color="fonBlue" size="sm" c="white">
               New
             </Badge>
           </Group>
@@ -210,10 +210,10 @@ export function JobForm({ onFormChange }: JobFormProps) {
 
       {/* Documents Card */}
       <Card padding="lg">
-        <Card.Section withBorder inheritPadding py="sm">
+        <Card.Section withBorder inheritPadding py="sm" bg="charcoal.6">
           <Group gap="xs">
-            <IconFolder size={18} color="var(--mantine-color-fonBlue-5)" />
-            <Text fw={600} size="sm" c="charcoal.7">
+            <IconFolder size={18} color="white" />
+            <Text fw={600} size="sm" c="white">
               Documents
             </Text>
           </Group>

@@ -39,56 +39,60 @@ def _save_completed_job_to_db(
     
     This is called synchronously from the background task after successful completion.
     Creates a fresh async engine/session to avoid event loop conflicts.
+    Uses URL.create() for proper handling of passwords with special characters.
     """
-    # #region agent log
-    import json, time
-    def _debug_log(hyp, msg, data=None):
-        try:
-            with open("/root/fon_proposal_writer/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"hypothesisId": hyp, "location": "routes.py:_save_completed_job_to_db", "message": msg, "data": data or {}, "timestamp": int(time.time()*1000), "sessionId": "debug-session"}) + "\n")
-        except: pass
-    # #endregion
-    
     try:
+        from urllib.parse import urlparse, parse_qs
+        from sqlalchemy import URL
         from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
         from db.models import Job
         from config import settings
         
-        # #region agent log
-        _debug_log("A", "Checking DATABASE_URL", {"has_url": bool(settings.database_url), "url_prefix": settings.database_url[:30] + "..." if settings.database_url and len(settings.database_url) > 30 else settings.database_url})
-        # #endregion
+        raw_url = (settings.database_url or "").strip()
         
-        if not settings.database_url:
+        if not raw_url:
             log.warning("Database not configured - skipping job persistence")
-            # #region agent log
-            _debug_log("A", "DATABASE_URL is empty - RETURNING EARLY", {})
-            # #endregion
             return
         
-        # Convert sync URL to async URL if needed
-        db_url = settings.database_url
-        if db_url.startswith("postgresql://"):
-            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        
-        # #region agent log
-        _debug_log("B", "Prepared async DB URL", {"has_sslmode": "sslmode" in db_url, "url_prefix": db_url[:50] + "..." if len(db_url) > 50 else db_url})
-        # #endregion
+        # Parse the DATABASE_URL to extract components
+        # This handles special characters in passwords properly
+        try:
+            parsed = urlparse(raw_url)
+            
+            # Extract query parameters (like sslmode)
+            query_params = parse_qs(parsed.query) if parsed.query else {}
+            # Flatten single-value lists
+            query_dict = {k: v[0] if len(v) == 1 else v for k, v in query_params.items()}
+            
+            # Ensure sslmode is set for Azure PostgreSQL
+            if "sslmode" not in query_dict:
+                query_dict["sslmode"] = "require"
+            
+            # Build the async URL using SQLAlchemy's URL.create()
+            # This properly handles password encoding
+            db_url = URL.create(
+                drivername="postgresql+asyncpg",
+                username=parsed.username,
+                password=parsed.password,
+                host=parsed.hostname,
+                port=parsed.port or 5432,
+                database=parsed.path.lstrip("/") if parsed.path else "postgres",
+                query=query_dict
+            )
+            
+            log.info(f"Database URL parsed successfully: host={parsed.hostname}, db={parsed.path.lstrip('/')}")
+            
+        except Exception as parse_err:
+            log.error(f"Failed to parse DATABASE_URL: {parse_err}")
+            return
         
         async def _save():
-            # #region agent log
-            _debug_log("C", "Inside async _save(), about to create engine", {})
-            # #endregion
-            
             # Create a fresh engine for this operation (avoids event loop conflicts)
             engine = create_async_engine(db_url, echo=False)
             async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
             
             try:
                 async with async_session() as session:
-                    # #region agent log
-                    _debug_log("D", "Session created, creating Job object", {"job_id": job_id, "job_name": job_name})
-                    # #endregion
-                    
                     job = Job(
                         id=uuid.UUID(job_id),
                         job_name=job_name,
@@ -101,41 +105,15 @@ def _save_completed_job_to_db(
                         file_count=file_count,
                     )
                     session.add(job)
-                    
-                    # #region agent log
-                    _debug_log("D", "About to commit job to database", {"job_id": job_id})
-                    # #endregion
-                    
                     await session.commit()
-                    
-                    # #region agent log
-                    _debug_log("D", "COMMIT SUCCESSFUL", {"job_id": job_id})
-                    # #endregion
-                    
                     log.info(f"Saved completed job {job_id} to database")
-            except Exception as inner_e:
-                # #region agent log
-                _debug_log("D", "EXCEPTION during session/commit", {"error": str(inner_e), "error_type": type(inner_e).__name__})
-                # #endregion
-                raise
             finally:
                 await engine.dispose()
-        
-        # #region agent log
-        _debug_log("C", "About to call asyncio.run(_save())", {})
-        # #endregion
         
         # Run async operation from sync context with fresh event loop
         asyncio.run(_save())
         
-        # #region agent log
-        _debug_log("C", "asyncio.run(_save()) completed successfully", {"job_id": job_id})
-        # #endregion
-        
     except Exception as e:
-        # #region agent log
-        _debug_log("E", "OUTER EXCEPTION caught", {"error": str(e), "error_type": type(e).__name__})
-        # #endregion
         log.error(f"Failed to save job {job_id} to database: {e}")
         # Don't raise - job completed successfully, just database persistence failed
 

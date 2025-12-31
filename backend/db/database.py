@@ -10,51 +10,73 @@ Configuration:
 
 import logging
 from typing import AsyncGenerator
+from urllib.parse import urlparse, parse_qs
 
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool
 
 from config import settings
 
 log = logging.getLogger(__name__)
 
-# Build async database URL from settings
-# Convert postgresql:// to postgresql+asyncpg:// for async driver
-DATABASE_URL = getattr(settings, 'database_url', None) or ""
+# Build async database URL from settings using URL.create()
+# This properly handles passwords with special characters
+DATABASE_URL = (getattr(settings, 'database_url', None) or "").strip()
+
+engine = None
+AsyncSessionLocal = None
 
 if DATABASE_URL:
-    if DATABASE_URL.startswith("postgresql://"):
-        ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-    elif DATABASE_URL.startswith("postgres://"):
-        ASYNC_DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
-    else:
-        ASYNC_DATABASE_URL = DATABASE_URL
+    try:
+        # Parse the DATABASE_URL to extract components
+        parsed = urlparse(DATABASE_URL)
+        
+        # Extract query parameters (like sslmode)
+        query_params = parse_qs(parsed.query) if parsed.query else {}
+        # Flatten single-value lists
+        query_dict = {k: v[0] if len(v) == 1 else v for k, v in query_params.items()}
+        
+        # Ensure sslmode is set for Azure PostgreSQL
+        if "sslmode" not in query_dict:
+            query_dict["sslmode"] = "require"
+        
+        # Build the async URL using SQLAlchemy's URL.create()
+        # This properly handles password encoding
+        ASYNC_DATABASE_URL = URL.create(
+            drivername="postgresql+asyncpg",
+            username=parsed.username,
+            password=parsed.password,
+            host=parsed.hostname,
+            port=parsed.port or 5432,
+            database=parsed.path.lstrip("/") if parsed.path else "postgres",
+            query=query_dict
+        )
+        
+        log.info(f"Database configured: host={parsed.hostname}, db={parsed.path.lstrip('/')}")
+        
+        # Create async engine with connection pooling
+        engine = create_async_engine(
+            ASYNC_DATABASE_URL,
+            pool_size=5,         # Max 15 users = 5 is plenty
+            max_overflow=2,      # Allow 2 extra in bursts
+            pool_pre_ping=True,  # Prevents stale connections
+            echo=settings.debug,  # Log SQL in debug mode
+        )
+        
+        # Create async session factory
+        AsyncSessionLocal = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+        
+    except Exception as e:
+        log.error(f"Failed to parse DATABASE_URL: {e}")
+        engine = None
+        AsyncSessionLocal = None
 else:
-    ASYNC_DATABASE_URL = ""
-
-# Create async engine with connection pooling
-# Only create if DATABASE_URL is configured
-if ASYNC_DATABASE_URL:
-    engine = create_async_engine(
-        ASYNC_DATABASE_URL,
-        pool_size=5,         # Max 15 users = 5 is plenty
-        max_overflow=2,      # Allow 2 extra in bursts
-        pool_pre_ping=True,  # Prevents stale connections
-        echo=settings.debug,  # Log SQL in debug mode
-    )
-    
-    # Create async session factory
-    AsyncSessionLocal = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-else:
-    # No database configured - use None placeholders
-    engine = None
-    AsyncSessionLocal = None
     log.warning("DATABASE_URL not configured - database features disabled")
 
 
@@ -84,43 +106,14 @@ async def init_db() -> None:
     Call this on application startup to ensure tables exist.
     For production, you may want to run migrations instead.
     """
-    # #region agent log
-    import json, time
-    def _debug_log(hyp, msg, data=None):
-        try:
-            with open("/root/fon_proposal_writer/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"hypothesisId": hyp, "location": "database.py:init_db", "message": msg, "data": data or {}, "timestamp": int(time.time()*1000), "sessionId": "debug-session"}) + "\n")
-        except: pass
-    # #endregion
-    
-    # #region agent log
-    _debug_log("E", "init_db called", {"engine_exists": engine is not None, "DATABASE_URL_set": bool(DATABASE_URL)})
-    # #endregion
-    
     if engine is None:
         log.warning("Database not configured - skipping table creation")
-        # #region agent log
-        _debug_log("E", "Engine is None - skipping table creation", {})
-        # #endregion
         return
     
     from .models import Base
     
-    try:
-        async with engine.begin() as conn:
-            # #region agent log
-            _debug_log("E", "Connected to database, creating tables", {})
-            # #endregion
-            # Create all tables
-            await conn.run_sync(Base.metadata.create_all)
-        
-        # #region agent log
-        _debug_log("E", "Tables created successfully", {})
-        # #endregion
-        log.info("Database tables initialized")
-    except Exception as e:
-        # #region agent log
-        _debug_log("E", "EXCEPTION during table creation", {"error": str(e), "error_type": type(e).__name__})
-        # #endregion
-        raise
-
+    async with engine.begin() as conn:
+        # Create all tables
+        await conn.run_sync(Base.metadata.create_all)
+    
+    log.info("Database tables initialized")

@@ -71,10 +71,10 @@ export function ProcessingCard({ formData }: ProcessingCardProps) {
 
   return (
     <Card padding="lg">
-      <Card.Section withBorder inheritPadding py="sm">
+      <Card.Section withBorder inheritPadding py="sm" bg="charcoal.6">
         <Group gap="xs">
-          <IconCpu size={18} color="var(--mantine-color-fonBlue-5)" />
-          <Text fw={600} size="sm" c="charcoal.7">
+          <IconCpu size={18} color="white" />
+          <Text fw={600} size="sm" c="white">
             Processing
           </Text>
         </Group>
